@@ -64,6 +64,61 @@
   }
 }
 
+.totalBanner {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.total_red {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+}
+
+.total_yellow {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+}
+
+.total_green {
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
+  background: color-mix(in srgb, var(--ok) 10%, var(--surface));
+}
+
+.totalLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.totalAmount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.total_red .totalAmount {
+  color: var(--danger);
+}
+
+.total_yellow .totalAmount {
+  color: var(--warn);
+}
+
+.total_green .totalAmount {
+  color: var(--ok);
+}
+
+.totalNote {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

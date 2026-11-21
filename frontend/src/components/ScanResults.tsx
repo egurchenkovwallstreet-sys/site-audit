@@ -6,6 +6,8 @@ import {
   resolveRiskColor,
   severityLabel,
   sortFindings,
+  sumPenalties,
+  totalPenaltyColor,
   type RiskColor,
 } from "@/lib/findingRisk";
 
@@ -86,16 +88,14 @@ export function ScanResults({
   const riskSummary = useMemo(() => {
     let red = 0;
     let yellow = 0;
-    let topPenalty = 0;
+    const totalPenalty = sumPenalties(findings);
+    const totalColor = totalPenaltyColor(totalPenalty);
     for (const f of findings) {
       const c = resolveRiskColor(f);
       if (c === "red") red += 1;
       if (c === "yellow") yellow += 1;
-      if (f.max_penalty != null && f.max_penalty > topPenalty) {
-        topPenalty = f.max_penalty;
-      }
     }
-    return { red, yellow, topPenalty };
+    return { red, yellow, totalPenalty, totalColor };
   }, [findings]);
 
   return (
@@ -118,6 +118,24 @@ export function ScanResults({
       {scan?.status === "completed" ? (
         findings.length > 0 ? (
           <>
+            {riskSummary.totalPenalty > 0 ? (
+              <div
+                className={`${styles.totalBanner} ${styles[`total_${riskSummary.totalColor}`]}`}
+                role="status"
+              >
+                <p className={styles.totalLabel}>
+                  Максимальная сумма штрафов по выявленным пунктам
+                </p>
+                <p className={styles.totalAmount}>
+                  до {riskSummary.totalPenalty.toLocaleString("ru-RU")} ₽
+                </p>
+                <p className={styles.totalNote}>
+                  Сумма верхних пределов по каждому пункту (152-ФЗ и риск утечки
+                  через уязвимости). Фактический штраф назначает контролирующий
+                  орган.
+                </p>
+              </div>
+            ) : null}
             <div className={styles.legend} aria-label="Шкала рисков">
               <span className={styles.legendTitle}>Шкала по ТЗ:</span>
               <span className={`${styles.legendDot} ${styles.dotGreen}`} />
@@ -127,25 +145,17 @@ export function ScanResults({
               <span className={`${styles.legendDot} ${styles.dotRed}`} />
               свыше 100 000 ₽ и критичные уязвимости
             </div>
-            {riskSummary.red > 0 || riskSummary.topPenalty > 0 ? (
+            {riskSummary.red > 0 || riskSummary.yellow > 0 ? (
               <p className={styles.summary}>
                 {riskSummary.red > 0 ? (
-                  <>
-                    <span className={styles.summaryCritical}>
-                      Критичных: {riskSummary.red}
-                    </span>
-                    {riskSummary.yellow > 0
-                      ? ` · средний риск: ${riskSummary.yellow}`
-                      : ""}
-                    {riskSummary.topPenalty > 0 ? " · " : ""}
-                  </>
+                  <span className={styles.summaryCritical}>
+                    Критичных: {riskSummary.red}
+                  </span>
                 ) : null}
-                {riskSummary.topPenalty > 0 ? (
+                {riskSummary.yellow > 0 ? (
                   <>
-                    Максимальный штраф по пункту:{" "}
-                    <span className={styles.summaryPenalty}>
-                      до {riskSummary.topPenalty.toLocaleString("ru-RU")} ₽
-                    </span>
+                    {riskSummary.red > 0 ? " · " : ""}
+                    Средний риск: {riskSummary.yellow}
                   </>
                 ) : null}
               </p>
@@ -177,7 +187,10 @@ export function ScanResults({
                       <p
                         className={`${styles.penalty} ${styles[`penalty_${risk}`]}`}
                       >
-                        Штраф до {f.max_penalty.toLocaleString("ru-RU")} ₽
+                        {f.type === "security"
+                          ? "Возможный штраф при утечке или взломе через эту уязвимость: до "
+                          : "Штраф до "}
+                        {f.max_penalty.toLocaleString("ru-RU")} ₽
                       </p>
                     ) : null}
                   </li>

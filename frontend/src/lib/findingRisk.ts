@@ -46,3 +46,14 @@ export function sortFindings<T extends FindingLike & { id: number }>(items: T[])
     return a.id - b.id;
   });
 }
+
+export function sumPenalties(items: FindingLike[]): number {
+  return items.reduce((acc, f) => acc + (f.max_penalty ?? 0), 0);
+}
+
+export function totalPenaltyColor(total: number): RiskColor {
+  if (total <= 0) return "green";
+  if (total < 10_000) return "green";
+  if (total <= 100_000) return "yellow";
+  return "red";
+}

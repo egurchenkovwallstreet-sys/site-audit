@@ -92,6 +92,25 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
             "Показывайте баннер согласия на cookie до установки нестрого необходимых cookie."
         ),
     ),
+    "pd_leak_via_security_gap": PenaltyEntry(
+        code="pd_leak_via_security_gap",
+        title="Утечка или компрометация ПДн из-за недостаточных мер защиты",
+        legal_article="ст. 13.11 КоАП РФ ч.5",
+        max_penalty=250_000,
+        severity="high",
+        remediation=(
+            "Внедрите меры защиты по ст. 19 152-ФЗ: шифрование, заголовки безопасности, "
+            "контроль сессий, регулярный аудит."
+        ),
+    ),
+    "pd_leak_via_security_gap_minor": PenaltyEntry(
+        code="pd_leak_via_security_gap_minor",
+        title="Утечка ПДн при эксплуатации технических недостатков",
+        legal_article="ст. 13.11 КоАП РФ ч.3",
+        max_penalty=60_000,
+        severity="medium",
+        remediation="Сократите поверхность атаки и устраните раскрытие инфраструктуры.",
+    ),
 }
 
 

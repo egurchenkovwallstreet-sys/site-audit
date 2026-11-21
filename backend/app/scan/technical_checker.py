@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from app.compliance.checker import validate_target_url
+from app.data.security_breach_risks import apply_breach_penalty
 from app.scan.access_findings import blocked_scan_finding, ssl_chain_finding
 from app.scan.fetch import fetch_target_page
 
 SECURITY_HEADERS = (
-    ("strict-transport-security", "HSTS", "high"),
-    ("x-content-type-options", "X-Content-Type-Options", "medium"),
-    ("x-frame-options", "X-Frame-Options", "medium"),
-    ("content-security-policy", "Content-Security-Policy (CSP)", "medium"),
+    ("strict-transport-security", "HSTS", "high", "missing_hsts"),
+    ("x-content-type-options", "X-Content-Type-Options", "medium", "missing_x_content_type_options"),
+    ("x-frame-options", "X-Frame-Options", "medium", "missing_x_frame_options"),
+    ("content-security-policy", "Content-Security-Policy (CSP)", "medium", "missing_csp"),
 )
 
 
@@ -17,13 +18,14 @@ def _finding(
     description: str,
     severity: str,
     remediation: str,
+    issue_key: str | None = None,
 ) -> dict:
     color = "green"
     if severity == "medium":
         color = "yellow"
     if severity in ("high", "critical"):
         color = "red"
-    return {
+    row = {
         "type": "security",
         "severity": severity,
         "title": title,
@@ -34,6 +36,9 @@ def _finding(
         "min_level": 1,
         "remediation": remediation,
     }
+    if issue_key:
+        row = apply_breach_penalty(row, issue_key)
+    return row
 
 
 async def check_url_technical(url: str) -> list[dict]:
@@ -47,13 +52,16 @@ async def check_url_technical(url: str) -> list[dict]:
                 description="Данные могут перехватываться между пользователем и сайтом.",
                 severity="high",
                 remediation="Включите HTTPS и редирект с http на https.",
+                issue_key="http_no_tls",
             )
         )
 
     fetch = await fetch_target_page(target)
 
     if fetch.ssl_verify_fallback:
-        findings.append(ssl_chain_finding())
+        findings.append(
+            apply_breach_penalty(ssl_chain_finding(), "ssl_chain_invalid")
+        )
 
     if fetch.fetch_error and fetch.status_code is None:
         findings.append(blocked_scan_finding("security", fetch))
@@ -66,22 +74,13 @@ async def check_url_technical(url: str) -> list[dict]:
                 description="Сервер вернул ошибку при загрузке страницы.",
                 severity="high",
                 remediation="Проверьте доступность сайта и настройки веб-сервера.",
+                issue_key="http_status_error",
             )
         )
 
     header_keys = fetch.headers
 
-    if target.lower().startswith("https://") and "strict-transport-security" not in header_keys:
-        findings.append(
-            _finding(
-                title="Нет заголовка HSTS",
-                description="Браузер не получает указание всегда использовать HTTPS.",
-                severity="medium",
-                remediation="Добавьте Strict-Transport-Security на веб-сервере или в CDN.",
-            )
-        )
-
-    for key, label, severity in SECURITY_HEADERS:
+    for key, label, severity, issue_key in SECURITY_HEADERS:
         if key not in header_keys:
             findings.append(
                 _finding(
@@ -89,6 +88,7 @@ async def check_url_technical(url: str) -> list[dict]:
                     description=f"Ответ сервера не содержит «{key}».",
                     severity=severity,
                     remediation=f"Настройте заголовок {label} для усиления защиты.",
+                    issue_key=issue_key,
                 )
             )
 
@@ -100,6 +100,7 @@ async def check_url_technical(url: str) -> list[dict]:
                 description=f"Значение: {server[:120]}",
                 severity="low",
                 remediation="Скройте или упростите заголовок Server.",
+                issue_key="server_disclosure",
             )
         )
 
@@ -111,6 +112,7 @@ async def check_url_technical(url: str) -> list[dict]:
                 description=f"Значение: {powered[:120]}",
                 severity="low",
                 remediation="Отключите заголовок X-Powered-By на сервере или в приложении.",
+                issue_key="x_powered_by_disclosure",
             )
         )
 
@@ -126,6 +128,7 @@ async def check_url_technical(url: str) -> list[dict]:
                 description="Cookie может передаваться по незащищённому соединению.",
                 severity="medium",
                 remediation="Добавьте флаг Secure для cookie на HTTPS-сайте.",
+                issue_key="cookie_no_secure",
             )
         )
 
