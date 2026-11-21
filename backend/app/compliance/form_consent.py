@@ -172,7 +172,10 @@ def _input_suggests_pdn(inp: Tag) -> bool:
     field_name = (inp.get("name") or "").lower()
     if field_name in LOGIN_FIELD_NAMES:
         return False
-    if field_name in PDN_FIELD_NAMES:
+    if field_name in PDN_FIELD_NAMES or field_name == "name":
+        return True
+    placeholder = (inp.get("placeholder") or "").lower()
+    if placeholder.strip() in ("имя", "ваше имя", "name"):
         return True
     autocomplete = (inp.get("autocomplete") or "").lower()
     if autocomplete in {"email", "tel", "name", "given-name", "family-name"}:
@@ -207,15 +210,45 @@ def form_likely_collects_personal_data(form: Tag) -> bool:
     return False
 
 
+CONSENT_CHECKBOX_NAMES = frozenset(
+    {
+        "agreed",
+        "agree",
+        "agreement",
+        "consent",
+        "privacy",
+        "personal_data",
+        "pd_consent",
+        "accept",
+        "accepted",
+        "policy",
+        "terms",
+        "legal",
+        "согласие",
+        "согласен",
+        "pd_agree",
+    }
+)
+
+
 def _form_has_consent_checkbox(form: Tag) -> bool:
     for inp in form.find_all("input"):
         if inp.get("type", "").lower() != "checkbox":
             continue
+        field_name = (inp.get("name") or "").lower()
+        field_id = (inp.get("id") or "").lower()
+        if field_name in CONSENT_CHECKBOX_NAMES or field_id in CONSENT_CHECKBOX_NAMES:
+            return True
+        if any(
+            token in field_name or token in field_id
+            for token in ("consent", "agree", "privacy", "policy", "соглас", "пдн")
+        ):
+            return True
         ctx = inp.get_text(" ", strip=True).lower()
         parent = inp.find_parent()
         if parent:
             ctx += " " + parent.get_text(" ", strip=True).lower()
-        if any(k in ctx for k in ("соглас", "персональн", "privacy", "consent", "152", "пдн")):
+        if any(k in ctx for k in ("соглас", "персональн", "privacy", "consent", "152", "пдн", "политик")):
             return True
     form_text = form.get_text(" ", strip=True).lower()
     if "политик" in form_text and "соглас" in form_text:
