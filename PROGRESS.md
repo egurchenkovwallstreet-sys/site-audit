@@ -16,7 +16,7 @@
 - [x] SQLAlchemy-модели и `access_level` / `min_level`.
 - [x] Миграции Alembic (`backend/alembic/versions/20251121_0001_initial_schema.py`).
 - [x] Docker Compose с PostgreSQL на сервере.
-- [ ] Проверено на VPS: `alembic upgrade` + `/api/health/db`.
+- [x] Проверено на VPS: `alembic upgrade` + `/api/health/db`.
 
 ## Шаг 3. Интеграция сканеров
 
