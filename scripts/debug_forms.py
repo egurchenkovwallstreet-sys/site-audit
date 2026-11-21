@@ -3,6 +3,7 @@ import sys
 from bs4 import BeautifulSoup
 
 from app.compliance.form_consent import (
+    _input_suggests_pdn,
     form_likely_collects_personal_data,
     forms_missing_pdn_consent,
     _form_is_utility,
@@ -32,6 +33,17 @@ async def main() -> None:
                 "id",
                 form.get("id"),
             )
+            if pdn:
+                for inp in form.find_all(["input", "textarea", "select"]):
+                    print(
+                        "   ",
+                        inp.name,
+                        inp.get("type"),
+                        inp.get("name"),
+                        (inp.get("placeholder") or "")[:50],
+                        "pdn",
+                        _input_suggests_pdn(inp),
+                    )
 
 
 asyncio.run(main())
