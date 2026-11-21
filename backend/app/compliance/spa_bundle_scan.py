@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from app.compliance.form_consent import script_url_is_vendor_bundle
 from app.scan.fetch import MAX_SCRIPT_BYTES, fetch_resource_text
 
 SPA_PRIVACY_MARKERS = (
@@ -87,7 +88,11 @@ async def analyze_spa_bundles(page_url: str, html: str) -> SpaBundleScan:
         if not result.privacy_found and _body_has_privacy(body):
             result.privacy_found = True
             result.privacy_script_url = script_url
-        if not result.consent_found and _text_has_marker(body, SPA_CONSENT_MARKERS):
+        if (
+            not result.consent_found
+            and not script_url_is_vendor_bundle(script_url)
+            and _text_has_marker(body, SPA_CONSENT_MARKERS)
+        ):
             result.consent_found = True
             result.consent_script_url = script_url
         if result.privacy_found and result.consent_found:

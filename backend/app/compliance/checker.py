@@ -15,6 +15,7 @@ from app.compliance.privacy_detection import (
     privacy_urls_from_robots,
     privacy_urls_from_sitemap,
 )
+from app.compliance.form_consent import forms_missing_pdn_consent
 from app.compliance.spa_bundle_scan import SpaBundleScan, analyze_spa_bundles
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
@@ -123,34 +124,6 @@ def _has_cookie_banner(html: str) -> bool:
     return False
 
 
-def _forms_without_consent_checkbox(html: str) -> list[str]:
-    soup = BeautifulSoup(html, "html.parser")
-    problematic: list[str] = []
-    for form in soup.find_all("form"):
-        inputs = form.find_all("input")
-        has_submit = any(
-            t.get("type", "").lower() in ("submit", "button") or t.name == "button"
-            for t in inputs
-        )
-        if not has_submit and not form.find("button"):
-            continue
-        has_consent = False
-        for inp in inputs:
-            if inp.get("type", "").lower() != "checkbox":
-                continue
-            ctx = inp.get_text(" ", strip=True).lower()
-            parent = inp.find_parent()
-            if parent:
-                ctx += " " + parent.get_text(" ", strip=True).lower()
-            if any(k in ctx for k in ("соглас", "персональн", "privacy", "consent", "152")):
-                has_consent = True
-                break
-        if not has_consent:
-            action = form.get("action") or "(текущая страница)"
-            problematic.append(action)
-    return problematic
-
-
 def _sdk_haystack(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     parts: list[str] = []
@@ -209,14 +182,15 @@ def run_compliance_checks(
             )
         )
 
-    forms = _forms_without_consent_checkbox(html)
+    forms = forms_missing_pdn_consent(html)
     if forms:
         findings.append(
             RawFinding(
                 penalty_code="processing_without_consent",
-                title="Форма без чекбокса согласия",
+                title="Форма сбора персональных данных без чекбокса согласия",
                 description=(
-                    f"Обнаружено форм без чекбокса согласия: {len(forms)}. "
+                    f"Обнаружено форм с полями персональных данных без чекбокса согласия: "
+                    f"{len(forms)}. Поиск, вход и служебные формы не учитываются. "
                     f"Пример action: {forms[0]}"
                 ),
                 severity="high",

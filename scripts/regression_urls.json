@@ -13,5 +13,12 @@
     "expect": {
       "privacy_found": false
     }
+  },
+  {
+    "name": "okno.ru no false form consent",
+    "url": "https://okno.ru/",
+    "expect": {
+      "absent_penalty_codes": ["processing_without_consent"]
+    }
   }
 ]
