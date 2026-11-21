@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from urllib.parse import urlparse
+
+import httpx
+from bs4 import BeautifulSoup
+
+from app.data.penalties import get_penalty, penalty_color
+
+PRIVACY_KEYWORDS = (
+    "политик",
+    "конфиденциальн",
+    "персональн",
+    "privacy",
+    "personal data",
+)
+COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
+FOREIGN_SDK_MARKERS = (
+    "firebase",
+    "googleapis.com",
+    "fcm.googleapis.com",
+    "googletagmanager",
+    "google-analytics",
+    "facebook",
+    "amplitude",
+    "mixpanel",
+)
+
+FETCH_TIMEOUT = 30.0
+MAX_BODY_BYTES = 2_000_000
+
+
+@dataclass(slots=True)
+class RawFinding:
+    penalty_code: str
+    title: str
+    description: str
+    severity: str
+
+
+def validate_target_url(url: str) -> str:
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Разрешены только URL с http или https")
+    if not parsed.netloc:
+        raise ValueError("Некорректный URL")
+    return url.strip()
+
+
+async def fetch_page_html(url: str) -> str:
+    headers = {
+        "User-Agent": (
+            "SiteAuditComplianceBot/1.0 (+https://github.com/egurchenkovwallstreet-sys/site-audit)"
+        ),
+    }
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=FETCH_TIMEOUT,
+        headers=headers,
+    ) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        if len(response.content) > MAX_BODY_BYTES:
+            raise ValueError("Страница слишком большая для проверки")
+        return response.text
+
+
+def _has_privacy_policy(html: str) -> bool:
+    soup = BeautifulSoup(html, "html.parser")
+    text_blob = soup.get_text(" ", strip=True).lower()
+    for a in soup.find_all("a", href=True):
+        href = a.get("href", "").lower()
+        label = a.get_text(" ", strip=True).lower()
+        if any(k in href or k in label for k in PRIVACY_KEYWORDS):
+            return True
+    return any(k in text_blob for k in ("политика конфиденциальности", "персональные данные"))
+
+
+def _has_cookie_banner(html: str) -> bool:
+    lower = html.lower()
+    if any(m in lower for m in COOKIE_MARKERS):
+        return True
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.find_all(True):
+        attrs = " ".join(
+            str(tag.get(attr, "")) for attr in ("id", "class", "aria-label", "data-testid")
+        ).lower()
+        if any(m in attrs for m in COOKIE_MARKERS):
+            return True
+    return False
+
+
+def _forms_without_consent_checkbox(html: str) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+    problematic: list[str] = []
+    for form in soup.find_all("form"):
+        inputs = form.find_all("input")
+        has_submit = any(
+            t.get("type", "").lower() in ("submit", "button") or t.name == "button"
+            for t in inputs
+        )
+        if not has_submit and not form.find("button"):
+            continue
+        has_consent = False
+        for inp in inputs:
+            if inp.get("type", "").lower() != "checkbox":
+                continue
+            ctx = inp.get_text(" ", strip=True).lower()
+            parent = inp.find_parent()
+            if parent:
+                ctx += " " + parent.get_text(" ", strip=True).lower()
+            if any(k in ctx for k in ("соглас", "персональн", "privacy", "consent", "152")):
+                has_consent = True
+                break
+        if not has_consent:
+            action = form.get("action") or "(текущая страница)"
+            problematic.append(action)
+    return problematic
+
+
+def _detect_foreign_sdks(html: str) -> list[str]:
+    lower = html.lower()
+    found: list[str] = []
+    for marker in FOREIGN_SDK_MARKERS:
+        if marker in lower:
+            found.append(marker)
+    return found
+
+
+def run_compliance_checks(html: str) -> list[RawFinding]:
+    findings: list[RawFinding] = []
+
+    if not _has_privacy_policy(html):
+        findings.append(
+            RawFinding(
+                penalty_code="no_privacy_policy",
+                title="Не найдена политика конфиденциальности",
+                description=(
+                    "На странице нет ссылки или текста политики конфиденциальности "
+                    "по ключевым словам."
+                ),
+                severity="medium",
+            )
+        )
+
+    if not _has_cookie_banner(html):
+        findings.append(
+            RawFinding(
+                penalty_code="no_cookie_banner",
+                title="Не обнаружен cookie/consent-баннер",
+                description=(
+                    "В HTML нет признаков баннера согласия на cookie "
+                    "(cookie, consent, gdpr и т.п.)."
+                ),
+                severity="high",
+            )
+        )
+
+    forms = _forms_without_consent_checkbox(html)
+    if forms:
+        findings.append(
+            RawFinding(
+                penalty_code="processing_without_consent",
+                title="Форма без чекбокса согласия",
+                description=(
+                    f"Обнаружено форм без чекбокса согласия: {len(forms)}. "
+                    f"Пример action: {forms[0]}"
+                ),
+                severity="high",
+            )
+        )
+
+    sdks = _detect_foreign_sdks(html)
+    if sdks:
+        findings.append(
+            RawFinding(
+                penalty_code="foreign_sdk_transfer",
+                title="Обнаружены иностранные SDK/скрипты",
+                description=f"В коде страницы найдены: {', '.join(sorted(set(sdks)))}.",
+                severity="high",
+            )
+        )
+
+    return findings
+
+
+def enrich_finding(raw: RawFinding) -> dict:
+    entry = get_penalty(raw.penalty_code)
+    if entry is None:
+        return {
+            "type": "compliance",
+            "severity": raw.severity,
+            "title": raw.title,
+            "description": raw.description,
+            "legal_article": None,
+            "max_penalty": None,
+            "color": "green",
+            "min_level": 1,
+            "remediation": None,
+        }
+    return {
+        "type": "compliance",
+        "severity": entry.severity,
+        "title": entry.title,
+        "description": raw.description,
+        "legal_article": entry.legal_article,
+        "max_penalty": entry.max_penalty,
+        "color": penalty_color(entry.max_penalty),
+        "min_level": 1,
+        "remediation": entry.remediation,
+    }
+
+
+async def check_url_compliance(url: str) -> list[dict]:
+    normalized = validate_target_url(url)
+    html = await fetch_page_html(normalized)
+    return [enrich_finding(f) for f in run_compliance_checks(html)]

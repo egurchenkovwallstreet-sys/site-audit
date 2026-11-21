@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+Color = Literal["green", "yellow", "red"]
+
+
+@dataclass(frozen=True, slots=True)
+class PenaltyEntry:
+    code: str
+    title: str
+    legal_article: str
+    max_penalty: int
+    remediation: str
+    severity: str = "medium"
+
+
+def penalty_color(max_penalty: int) -> Color:
+    if max_penalty < 10_000:
+        return "green"
+    if max_penalty <= 100_000:
+        return "yellow"
+    return "red"
+
+
+PENALTY_CATALOG: dict[str, PenaltyEntry] = {
+    "no_privacy_policy": PenaltyEntry(
+        code="no_privacy_policy",
+        title="Нет политики конфиденциальности",
+        legal_article="ст. 13.11 КоАП РФ ч.3",
+        max_penalty=60_000,
+        severity="medium",
+        remediation=(
+            "Разместите на сайте ссылку на политику конфиденциальности "
+            "(футер и страница о персональных данных)."
+        ),
+    ),
+    "processing_without_consent": PenaltyEntry(
+        code="processing_without_consent",
+        title="Обработка без согласия",
+        legal_article="ст. 13.11 КоАП РФ ч.1",
+        max_penalty=300_000,
+        severity="high",
+        remediation=(
+            "Добавьте чекбокс согласия на обработку ПДн в формах сбора данных "
+            "и храните факт согласия."
+        ),
+    ),
+    "written_consent_violation": PenaltyEntry(
+        code="written_consent_violation",
+        title="Нарушение требований к письменному согласию",
+        legal_article="ст. 13.11 КоАП РФ ч.2",
+        max_penalty=700_000,
+        severity="high",
+        remediation="Приведите текст согласия и порядок фиксации в соответствие с 152-ФЗ.",
+    ),
+    "no_subject_info": PenaltyEntry(
+        code="no_subject_info",
+        title="Непредоставление информации субъекту",
+        legal_article="ст. 13.11 КоАП РФ ч.4",
+        max_penalty=80_000,
+        severity="medium",
+        remediation="Опишите в политике цели, сроки и права субъекта персональных данных.",
+    ),
+    "no_rkn_notification": PenaltyEntry(
+        code="no_rkn_notification",
+        title="Неуведомление РКН о начале обработки",
+        legal_article="ст. 13.11 КоАП РФ ч.10",
+        max_penalty=300_000,
+        severity="high",
+        remediation="Проверьте необходимость уведомления РКН и подайте при наличии оснований.",
+    ),
+    "foreign_sdk_transfer": PenaltyEntry(
+        code="foreign_sdk_transfer",
+        title="Передача через иностранные SDK без основания",
+        legal_article="ст. 13.11 КоАП РФ ч.1",
+        max_penalty=300_000,
+        severity="high",
+        remediation=(
+            "Удалите или замените иностранные аналитические SDK либо "
+            "оформите правовые основания трансграничной передачи."
+        ),
+    ),
+    "no_cookie_banner": PenaltyEntry(
+        code="no_cookie_banner",
+        title="Нет явного cookie/consent-баннера",
+        legal_article="ст. 13.11 КоАП РФ ч.1",
+        max_penalty=300_000,
+        severity="high",
+        remediation=(
+            "Показывайте баннер согласия на cookie до установки нестрого необходимых cookie."
+        ),
+    ),
+}
+
+
+def get_penalty(code: str) -> PenaltyEntry | None:
+    return PENALTY_CATALOG.get(code)

@@ -24,11 +24,15 @@
 
 ## Шаг 4. Комплаенс-проверки
 
-- [ ] Не начат.
+- [x] `backend/app/compliance/checker.py` — политика, cookie, формы, иностранные SDK.
+- [x] Привязка штрафов из справочника.
+- [x] API: POST `/api/scans`, GET findings.
+- [ ] Проверено на сервере тестовым URL.
 
 ## Шаг 5. Справочник штрафов
 
-- [ ] Не начат.
+- [x] `backend/app/data/penalties.py` + цвета и remediation.
+- [ ] Проверено на сервере тестовым URL.
 
 ## Шаг 6. Интеграция GigaChat
 
