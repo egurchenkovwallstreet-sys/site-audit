@@ -2,8 +2,9 @@
 set -euo pipefail
 cd /root/apps/site-audit
 git pull
-PASS=$(openssl rand -hex 16)
-cat > .env <<EOF
+if [ ! -f .env ]; then
+  PASS=$(openssl rand -hex 16)
+  cat > .env <<EOF
 APP_ENV=production
 SITE_ADDRESS=:80
 NEXT_PUBLIC_API_URL=http://194.87.220.206:8080
@@ -16,6 +17,7 @@ GIGACHAT_AUTH_KEY=
 YOOKASSA_SHOP_ID=
 PAYMENT_RETURN_URL=http://194.87.220.206:8080/reports
 EOF
+fi
 cp deploy/nginx-site-audit.conf /etc/nginx/sites-available/site-audit
 ln -sf /etc/nginx/sites-available/site-audit /etc/nginx/sites-enabled/site-audit
 nginx -t
