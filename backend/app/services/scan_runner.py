@@ -14,8 +14,17 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
     await session.commit()
 
     try:
-        rows = await check_url_compliance(scan.target_url)
-        rows.extend(await check_url_technical(scan.target_url))
+        rows: list[dict] = []
+        try:
+            rows.extend(await check_url_compliance(scan.target_url))
+        except Exception:
+            pass
+        try:
+            rows.extend(await check_url_technical(scan.target_url))
+        except Exception:
+            pass
+        if not rows:
+            raise RuntimeError("Не удалось получить данные с сайта")
         for row in rows:
             session.add(
                 Finding(

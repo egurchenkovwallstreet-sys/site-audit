@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-import httpx
 from bs4 import BeautifulSoup
 
 from app.data.penalties import get_penalty, penalty_color
+from app.scan.access_findings import blocked_scan_finding
+from app.scan.fetch import fetch_target_page
 
 PRIVACY_KEYWORDS = (
     "политик",
@@ -27,10 +28,6 @@ FOREIGN_SDK_MARKERS = (
     "mixpanel",
 )
 
-FETCH_TIMEOUT = 30.0
-MAX_BODY_BYTES = 2_000_000
-
-
 @dataclass(slots=True)
 class RawFinding:
     penalty_code: str
@@ -46,24 +43,6 @@ def validate_target_url(url: str) -> str:
     if not parsed.netloc:
         raise ValueError("Некорректный URL")
     return url.strip()
-
-
-async def fetch_page_html(url: str) -> str:
-    headers = {
-        "User-Agent": (
-            "SiteAuditComplianceBot/1.0 (+https://github.com/egurchenkovwallstreet-sys/site-audit)"
-        ),
-    }
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=FETCH_TIMEOUT,
-        headers=headers,
-    ) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        if len(response.content) > MAX_BODY_BYTES:
-            raise ValueError("Страница слишком большая для проверки")
-        return response.text
 
 
 def _has_privacy_policy(html: str) -> bool:
@@ -214,5 +193,12 @@ def enrich_finding(raw: RawFinding) -> dict:
 
 async def check_url_compliance(url: str) -> list[dict]:
     normalized = validate_target_url(url)
-    html = await fetch_page_html(normalized)
-    return [enrich_finding(f) for f in run_compliance_checks(html)]
+    fetch = await fetch_target_page(normalized)
+    findings: list[dict] = []
+
+    if not fetch.html_available:
+        findings.append(blocked_scan_finding("compliance", fetch))
+        return findings
+
+    findings.extend(enrich_finding(f) for f in run_compliance_checks(fetch.html or ""))
+    return findings

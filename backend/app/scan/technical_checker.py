@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import httpx
-
-from app.compliance.checker import FETCH_TIMEOUT, validate_target_url
+from app.compliance.checker import validate_target_url
+from app.scan.access_findings import blocked_scan_finding, ssl_chain_finding
+from app.scan.fetch import fetch_target_page
 
 SECURITY_HEADERS = (
     ("strict-transport-security", "HSTS", "high"),
@@ -50,27 +50,26 @@ async def check_url_technical(url: str) -> list[dict]:
             )
         )
 
-    headers = {
-        "User-Agent": "SiteAuditTechnicalBot/1.0",
-    }
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=FETCH_TIMEOUT,
-        headers=headers,
-    ) as client:
-        response = await client.get(target)
+    fetch = await fetch_target_page(target)
 
-    if response.status_code >= 400:
+    if fetch.ssl_verify_fallback:
+        findings.append(ssl_chain_finding())
+
+    if fetch.fetch_error and fetch.status_code is None:
+        findings.append(blocked_scan_finding("security", fetch))
+        return findings
+
+    if fetch.status_code is not None and fetch.status_code >= 400:
         findings.append(
             _finding(
-                title=f"Главная страница отвечает кодом {response.status_code}",
+                title=f"Главная страница отвечает кодом {fetch.status_code}",
                 description="Сервер вернул ошибку при загрузке страницы.",
                 severity="high",
                 remediation="Проверьте доступность сайта и настройки веб-сервера.",
             )
         )
 
-    header_keys = {k.lower(): v for k, v in response.headers.items()}
+    header_keys = fetch.headers
 
     if target.lower().startswith("https://") and "strict-transport-security" not in header_keys:
         findings.append(
