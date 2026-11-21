@@ -102,26 +102,22 @@ def _form_is_login_or_session(form: Tag) -> bool:
     if form.find("input", {"type": "password"}):
         return True
     blob = _form_context_blob(form)
-    if any(h in blob for h in UTILITY_FORM_HINTS):
-        if "search" not in blob or "login" in blob or "auth" in blob:
-            if any(
-                x in blob
-                for x in (
-                    "login",
-                    "log-in",
-                    "signin",
-                    "sign-in",
-                    "auth",
-                    "oauth",
-                    "войти",
-                    "вход",
-                    "logout",
-                    "log-out",
-                    "выход",
-                )
-            ):
-                return True
-    return False
+    return any(
+        x in blob
+        for x in (
+            "login",
+            "log-in",
+            "signin",
+            "sign-in",
+            "auth",
+            "oauth",
+            "войти",
+            "вход",
+            "logout",
+            "log-out",
+            "выход",
+        )
+    )
 
 
 def _form_is_utility(form: Tag) -> bool:
