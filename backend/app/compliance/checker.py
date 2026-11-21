@@ -16,22 +16,17 @@ from app.compliance.privacy_detection import (
     privacy_urls_from_sitemap,
 )
 from app.compliance.form_consent import forms_missing_pdn_consent
+from app.compliance.legal_basis import format_finding_preamble
 from app.compliance.spa_bundle_scan import SpaBundleScan, analyze_spa_bundles
+from app.compliance.tracking_scripts import (
+    detect_foreign_analytics,
+    detect_measurable_tracking,
+)
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
-FOREIGN_SDK_MARKERS = (
-    "firebase",
-    "googleapis.com",
-    "fcm.googleapis.com",
-    "googletagmanager",
-    "google-analytics",
-    "facebook",
-    "amplitude",
-    "mixpanel",
-)
 
 CHECK_SCOPE_NOTE = (
     "Проверены главная страница, типовые ссылки на политику, robots.txt и sitemap.xml."
@@ -124,59 +119,37 @@ def _has_cookie_banner(html: str) -> bool:
     return False
 
 
-def _sdk_haystack(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    parts: list[str] = []
-    for tag in soup.find_all("script"):
-        src = tag.get("src")
-        if src:
-            parts.append(str(src))
-        elif tag.string:
-            parts.append(tag.string[:8000])
-    for tag in soup.find_all("iframe", src=True):
-        parts.append(str(tag["src"]))
-    return " ".join(parts).lower()
-
-
-def _detect_foreign_sdks(html: str) -> list[str]:
-    haystack = _sdk_haystack(html)
-    if not haystack.strip():
-        return []
-    found: list[str] = []
-    for marker in FOREIGN_SDK_MARKERS:
-        if marker in haystack:
-            found.append(marker)
-    return found
-
-
 def run_compliance_checks(
     html: str, *, privacy_found: bool, consent_markers_found: bool
 ) -> list[RawFinding]:
     findings: list[RawFinding] = []
 
+    tracking = detect_measurable_tracking(html)
+
     if not privacy_found:
         findings.append(
             RawFinding(
                 penalty_code="no_privacy_policy",
-                title="Не найдена политика конфиденциальности",
+                title="Не опубликована политика обработки ПДн",
                 description=(
-                    "На проверенной странице и по типовым ссылкам (/privacy, "
-                    "политика конфиденциальности и т.п.) документ не обнаружен. "
-                    "Если политика есть только во внутренних разделах или открывается "
-                    "через JavaScript, укажите прямую ссылку на неё в проверке."
+                    format_finding_preamble("no_privacy_policy")
+                    + "Документ не найден на главной и по типовым адресам "
+                    "(/privacy, политика в футере, robots/sitemap, SPA). "
+                    "Если политика только во внутреннем разделе — проверьте по прямой ссылке."
                 ),
                 severity="medium",
             )
         )
 
-    if not consent_markers_found and not _has_cookie_banner(html):
+    if tracking and not consent_markers_found and not _has_cookie_banner(html):
         findings.append(
             RawFinding(
                 penalty_code="no_cookie_banner",
-                title="Не обнаружен cookie/consent-баннер",
+                title="Нет согласия при подключённой аналитике",
                 description=(
-                    "В HTML нет признаков баннера согласия на cookie "
-                    "(cookie, consent, gdpr и т.п.)."
+                    format_finding_preamble("no_cookie_banner")
+                    + f"Обнаружены скрипты аналитики/рекламы: {', '.join(tracking)}. "
+                    "Баннер или иной механизм согласия на cookie не найден."
                 ),
                 severity="high",
             )
@@ -187,23 +160,26 @@ def run_compliance_checks(
         findings.append(
             RawFinding(
                 penalty_code="processing_without_consent",
-                title="Форма сбора персональных данных без чекбокса согласия",
+                title="Сбор ПДн в форме без согласия",
                 description=(
-                    f"Обнаружено форм с полями персональных данных без чекбокса согласия: "
-                    f"{len(forms)}. Поиск, вход и служебные формы не учитываются. "
-                    f"Пример action: {forms[0]}"
+                    format_finding_preamble("processing_without_consent")
+                    + f"Форм с полями ПДн без согласия: {len(forms)} "
+                    f"(поиск и вход не учитываются). Пример: {forms[0]}."
                 ),
                 severity="high",
             )
         )
 
-    sdks = _detect_foreign_sdks(html)
-    if sdks:
+    foreign = detect_foreign_analytics(html)
+    if foreign:
         findings.append(
             RawFinding(
                 penalty_code="foreign_sdk_transfer",
-                title="Обнаружены иностранные SDK/скрипты",
-                description=f"В подключённых скриптах найдены: {', '.join(sorted(set(sdks)))}.",
+                title="Иностранная аналитика/реклама (трансграничная передача)",
+                description=(
+                    format_finding_preamble("foreign_sdk_transfer")
+                    + f"Подключены скрипты: {', '.join(foreign)}."
+                ),
                 severity="high",
             )
         )
@@ -228,7 +204,7 @@ def enrich_finding(raw: RawFinding) -> dict:
     return {
         "type": "compliance",
         "severity": entry.severity,
-        "title": entry.title,
+        "title": raw.title,
         "description": raw.description,
         "legal_article": entry.legal_article,
         "max_penalty": entry.max_penalty,

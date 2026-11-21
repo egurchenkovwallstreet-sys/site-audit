@@ -311,7 +311,8 @@ export function ScanResults({
                 Выявленные нарушения (факты)
               </h3>
               <p className={styles.sectionHint}>
-                То, что сервис нашёл на проверенной странице по 152-ФЗ.
+                Каждый пункт привязан к норме 152-ФЗ и возможной статье КоАП;
+                в описании указано, что именно искали на странице.
               </p>
               {complianceFindings.length > 0 ? (
                 <FindingItems items={complianceFindings} />

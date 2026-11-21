@@ -27,19 +27,19 @@ def penalty_color(max_penalty: int) -> Color:
 PENALTY_CATALOG: dict[str, PenaltyEntry] = {
     "no_privacy_policy": PenaltyEntry(
         code="no_privacy_policy",
-        title="Нет политики конфиденциальности",
-        legal_article="ст. 13.11 КоАП РФ ч.3",
+        title="Не опубликована политика обработки ПДн",
+        legal_article="152-ФЗ ст. 18.1 ч. 4; ст. 13.11 КоАП РФ ч. 3",
         max_penalty=60_000,
         severity="medium",
         remediation=(
-            "Разместите на сайте ссылку на политику конфиденциальности "
-            "(футер и страница о персональных данных)."
+            "Опубликуйте на сайте документ о политике в отношении персональных данных "
+            "(152-ФЗ ст. 18.1) — ссылка в футере или отдельная страница."
         ),
     ),
     "processing_without_consent": PenaltyEntry(
         code="processing_without_consent",
-        title="Обработка без согласия",
-        legal_article="ст. 13.11 КоАП РФ ч.1",
+        title="Сбор ПДн в форме без согласия",
+        legal_article="152-ФЗ ст. 9; ст. 13.11 КоАП РФ ч. 1",
         max_penalty=300_000,
         severity="high",
         remediation=(
@@ -73,23 +73,24 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
     ),
     "foreign_sdk_transfer": PenaltyEntry(
         code="foreign_sdk_transfer",
-        title="Передача через иностранные SDK без основания",
-        legal_article="ст. 13.11 КоАП РФ ч.1",
+        title="Иностранная аналитика/реклама (трансграничная передача)",
+        legal_article="152-ФЗ ст. 12; ст. 13.11 КоАП РФ ч. 1",
         max_penalty=300_000,
         severity="high",
         remediation=(
-            "Удалите или замените иностранные аналитические SDK либо "
-            "оформите правовые основания трансграничной передачи."
+            "Уберите зарубежные трекеры или оформите трансграничную передачу "
+            "по ст. 12 152-ФЗ (договор, согласие, оценка страны)."
         ),
     ),
     "no_cookie_banner": PenaltyEntry(
         code="no_cookie_banner",
-        title="Нет явного cookie/consent-баннера",
-        legal_article="ст. 13.11 КоАП РФ ч.1",
+        title="Нет согласия при подключённой аналитике",
+        legal_article="152-ФЗ ст. 9; ст. 13.11 КоАП РФ ч. 1",
         max_penalty=300_000,
         severity="high",
         remediation=(
-            "Показывайте баннер согласия на cookie до установки нестрого необходимых cookie."
+            "Перед установкой аналитических cookie показывайте согласие "
+            "(баннер или равнозначный механизм)."
         ),
     ),
     "pd_leak_via_security_gap": PenaltyEntry(
