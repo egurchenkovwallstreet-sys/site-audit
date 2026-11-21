@@ -1,11 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import styles from "./ScanForm.module.css";
 
-export function ScanForm() {
-  const router = useRouter();
+export function ScanForm({
+  onStarted,
+}: {
+  onStarted: (scanId: number, url: string) => void;
+}) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,7 @@ export function ScanForm() {
         );
         return;
       }
-      router.push(`/check/${data.id}`);
+      onStarted(data.id, trimmed);
     } catch {
       setError("Сервер недоступен. Попробуйте позже.");
     } finally {

@@ -1,35 +1,41 @@
-.page {
-  flex: 1;
-  min-height: 100vh;
-  padding: 2rem 1.25rem 3rem;
-  max-width: 720px;
-  margin: 0 auto;
+.wrap {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
 }
 
-.back {
-  display: inline-block;
-  margin-bottom: 1.5rem;
-  color: var(--accent);
-  font-size: 0.9rem;
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .title {
-  font-size: clamp(1.5rem, 5vw, 2rem);
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  margin-bottom: 0.5rem;
+}
+
+.reset {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-height: 44px;
 }
 
 .url {
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  font-size: 0.9rem;
   word-break: break-all;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .status {
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .loader {
@@ -38,7 +44,7 @@
   background: var(--border);
   border-radius: 99px;
   overflow: hidden;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .loaderBar {
@@ -61,13 +67,12 @@
 .list {
   list-style: none;
   border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
+  border-radius: 14px;
   overflow: hidden;
 }
 
 .item {
-  padding: 1rem 1.1rem;
+  padding: 1rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -83,14 +88,10 @@
 .itemMeta {
   font-size: 0.85rem;
   color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .penalty {
-  font-variant-numeric: tabular-nums;
   margin-top: 0.35rem;
-  font-size: 0.9rem;
-}
-
-.error {
-  color: var(--danger);
+  font-variant-numeric: tabular-nums;
 }

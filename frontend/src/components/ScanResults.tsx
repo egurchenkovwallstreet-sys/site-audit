@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import styles from "./check.module.css";
+import styles from "./ScanResults.module.css";
 
 type Scan = { id: number; target_url: string; status: string };
 
@@ -12,45 +11,44 @@ type Finding = {
   description: string;
   legal_article: string | null;
   max_penalty: number | null;
-  color: string | null;
 };
 
-const STEPS: Record<string, string> = {
+const STATUS_TEXT: Record<string, string> = {
   pending: "Готовим проверку…",
   running: "Проверяем 152-ФЗ…",
   completed: "Готово",
   failed: "Не удалось завершить проверку",
 };
 
-export function CheckView({ scanId }: { scanId: string }) {
+export function ScanResults({
+  scanId,
+  targetUrl,
+  onReset,
+}: {
+  scanId: number;
+  targetUrl: string;
+  onReset: () => void;
+}) {
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function poll() {
-      try {
-        const res = await fetch(`/api/scans/${scanId}`);
-        if (!res.ok) throw new Error("not_found");
-        const data: Scan = await res.json();
-        if (!active) return;
-        setScan(data);
+      const res = await fetch(`/api/scans/${scanId}`);
+      if (!res.ok) return;
+      const data: Scan = await res.json();
+      if (!active) return;
+      setScan(data);
 
-        if (data.status === "completed") {
-          const fr = await fetch(`/api/scans/${scanId}/findings`);
-          if (fr.ok) {
-            setFindings(await fr.json());
-          }
-          return;
-        }
-        if (data.status === "failed") return;
-
-        setTimeout(poll, 3000);
-      } catch {
-        if (active) setError("Проверка не найдена.");
+      if (data.status === "completed") {
+        const fr = await fetch(`/api/scans/${scanId}/findings`);
+        if (fr.ok) setFindings(await fr.json());
+        return;
       }
+      if (data.status === "failed") return;
+      setTimeout(poll, 3000);
     }
 
     poll();
@@ -59,21 +57,20 @@ export function CheckView({ scanId }: { scanId: string }) {
     };
   }, [scanId]);
 
-  const busy = scan && (scan.status === "pending" || scan.status === "running");
+  const busy = !scan || scan.status === "pending" || scan.status === "running";
 
   return (
-    <div className={styles.page}>
-      <Link href="/" className={styles.back}>
-        ← Новая проверка
-      </Link>
-      <h1 className={styles.title}>Результат проверки</h1>
-      {scan ? <p className={styles.url}>{scan.target_url}</p> : null}
-      {error ? <p className={styles.error}>{error}</p> : null}
-      {scan ? (
-        <p className={styles.status}>{STEPS[scan.status] ?? scan.status}</p>
-      ) : (
-        <p className={styles.status}>Загрузка…</p>
-      )}
+    <section className={styles.wrap}>
+      <div className={styles.head}>
+        <h2 className={styles.title}>Результат</h2>
+        <button type="button" className={styles.reset} onClick={onReset}>
+          Новая проверка
+        </button>
+      </div>
+      <p className={styles.url}>{targetUrl}</p>
+      <p className={styles.status}>
+        {scan ? STATUS_TEXT[scan.status] ?? scan.status : "Загрузка…"}
+      </p>
       {busy ? (
         <div className={styles.loader}>
           <div className={styles.loaderBar} />
@@ -103,6 +100,6 @@ export function CheckView({ scanId }: { scanId: string }) {
           </p>
         )
       ) : null}
-    </div>
+    </section>
   );
 }
