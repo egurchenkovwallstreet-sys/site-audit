@@ -85,12 +85,15 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
-.subscription {
+.scopeNote {
   margin-top: 2.4rem;
-  font-size: 1.08rem;
+  font-size: 1.02rem;
   line-height: 1.6;
   color: var(--text-secondary);
   text-align: center;
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .disclaimer {

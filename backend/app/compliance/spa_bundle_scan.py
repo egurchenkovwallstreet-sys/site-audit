@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -34,6 +35,15 @@ SPA_CONSENT_MARKERS = (
 )
 
 _SCRIPT_HINT = re.compile(r"\.(?:js|mjs)(?:\?|$)", re.IGNORECASE)
+_PRIVACY_ROUTE = re.compile(r'["\']/(?:privacy|offer)["\']', re.IGNORECASE)
+
+
+@dataclass(slots=True)
+class SpaBundleScan:
+    privacy_found: bool = False
+    privacy_script_url: str | None = None
+    consent_found: bool = False
+    consent_script_url: str | None = None
 
 
 def _discover_script_urls(page_url: str, html: str) -> list[str]:
@@ -61,21 +71,25 @@ def _text_has_marker(text: str, markers: tuple[str, ...]) -> bool:
     return any(m in lower for m in markers)
 
 
-async def spa_bundle_has_privacy(page_url: str, html: str) -> bool:
+def _body_has_privacy(body: str) -> bool:
+    return _text_has_marker(body, SPA_PRIVACY_MARKERS) or bool(
+        _PRIVACY_ROUTE.search(body)
+    )
+
+
+async def analyze_spa_bundles(page_url: str, html: str) -> SpaBundleScan:
+    """Один проход по JS-бандлам: политика и согласие без повторных загрузок."""
+    result = SpaBundleScan()
     for script_url in _discover_script_urls(page_url, html):
         body = await fetch_resource_text(script_url, max_bytes=MAX_SCRIPT_BYTES)
         if not body:
             continue
-        if _text_has_marker(body, SPA_PRIVACY_MARKERS):
-            return True
-        if re.search(r'["\']/(?:privacy|offer)["\']', body, re.IGNORECASE):
-            return True
-    return False
-
-
-async def spa_bundle_has_consent(page_url: str, html: str) -> bool:
-    for script_url in _discover_script_urls(page_url, html):
-        body = await fetch_resource_text(script_url, max_bytes=MAX_SCRIPT_BYTES)
-        if body and _text_has_marker(body, SPA_CONSENT_MARKERS):
-            return True
-    return False
+        if not result.privacy_found and _body_has_privacy(body):
+            result.privacy_found = True
+            result.privacy_script_url = script_url
+        if not result.consent_found and _text_has_marker(body, SPA_CONSENT_MARKERS):
+            result.consent_found = True
+            result.consent_script_url = script_url
+        if result.privacy_found and result.consent_found:
+            break
+    return result

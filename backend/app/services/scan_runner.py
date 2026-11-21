@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,16 +16,18 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
 
     try:
         rows: list[dict] = []
+        context: dict | None = None
         try:
-            rows.extend(await check_url_compliance(scan.target_url))
+            compliance_rows, context = await check_url_compliance(scan.target_url)
+            rows.extend(compliance_rows)
         except Exception:
             pass
         try:
             rows.extend(await check_url_technical(scan.target_url))
         except Exception:
             pass
-        if not rows:
-            raise RuntimeError("Не удалось получить данные с сайта")
+        if context is not None:
+            scan.context_json = json.dumps(context, ensure_ascii=False)
         for row in rows:
             session.add(
                 Finding(

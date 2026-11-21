@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Darom Flutter SPA",
+    "url": "https://darom-app.online/",
+    "expect": {
+      "privacy_found": true,
+      "absent_penalty_codes": ["no_privacy_policy", "no_cookie_banner"]
+    }
+  },
+  {
+    "name": "example.com baseline",
+    "url": "https://example.com/",
+    "expect": {
+      "privacy_found": false
+    }
+  }
+]

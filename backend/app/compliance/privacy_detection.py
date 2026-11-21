@@ -130,6 +130,27 @@ def _privacy_urls_in_raw(page_url: str, html: str) -> list[str]:
     return found
 
 
+_SITEMAP_LOC = re.compile(r"<loc>\s*([^<]+)\s*</loc>", re.IGNORECASE)
+
+
+def privacy_urls_from_sitemap(page_url: str, sitemap_xml: str) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in _SITEMAP_LOC.finditer(sitemap_xml):
+        candidate = match.group(1).strip()
+        if not candidate.startswith("http"):
+            candidate = urljoin(page_url, candidate)
+        if not _same_origin(page_url, candidate):
+            continue
+        if not _link_suggests_privacy(candidate, ""):
+            continue
+        key = candidate.split("#")[0].rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            urls.append(key)
+    return urls
+
+
 def privacy_urls_from_robots(page_url: str, robots_txt: str) -> list[str]:
     urls: list[str] = []
     seen: set[str] = set()

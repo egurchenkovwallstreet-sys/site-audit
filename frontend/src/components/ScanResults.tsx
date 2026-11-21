@@ -12,7 +12,20 @@ import {
   type RiskColor,
 } from "@/lib/findingRisk";
 
-type Scan = { id: number; target_url: string; status: string };
+type ScanContext = {
+  scope?: string;
+  privacy_found?: boolean;
+  privacy_source?: string | null;
+  consent_found?: boolean;
+  consent_source?: string | null;
+};
+
+type Scan = {
+  id: number;
+  target_url: string;
+  status: string;
+  context?: ScanContext | null;
+};
 
 type Finding = {
   id: number;
@@ -31,6 +44,12 @@ const STATUS_TEXT: Record<string, string> = {
   completed: "Готово",
   failed: "Не удалось завершить проверку",
 };
+
+const STEPS = [
+  "Загружаем страницу",
+  "Проверяем требования 152-ФЗ",
+  "Оцениваем технические риски",
+] as const;
 
 const RISK_ITEM_CLASS: Record<RiskColor, string> = {
   red: styles.itemRed,
@@ -90,6 +109,41 @@ function FindingItems({ items }: { items: Finding[] }) {
   );
 }
 
+function CheckContextPanel({ context }: { context: ScanContext }) {
+  return (
+    <div className={styles.contextBlock}>
+      <p className={styles.contextTitle}>Что проверили</p>
+      {context.scope ? (
+        <p className={styles.contextMeta}>{context.scope}</p>
+      ) : null}
+      <ul className={styles.contextList}>
+        <li>
+          Политика ПДн:{" "}
+          {context.privacy_found ? (
+            <span className={styles.contextOk}>найдена</span>
+          ) : (
+            <span className={styles.contextWarn}>не обнаружена</span>
+          )}
+          {context.privacy_source ? (
+            <span className={styles.contextMeta}> — {context.privacy_source}</span>
+          ) : null}
+        </li>
+        <li>
+          Согласие / cookie:{" "}
+          {context.consent_found ? (
+            <span className={styles.contextOk}>признаки есть</span>
+          ) : (
+            <span className={styles.contextWarn}>признаков нет</span>
+          )}
+          {context.consent_source ? (
+            <span className={styles.contextMeta}> — {context.consent_source}</span>
+          ) : null}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 export function ScanResults({
   scanId,
   targetUrl,
@@ -101,9 +155,11 @@ export function ScanResults({
 }) {
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [progressStep, setProgressStep] = useState(0);
 
   useEffect(() => {
     let active = true;
+    let tick = 0;
 
     async function poll() {
       const res = await fetch(`/api/scans/${scanId}`);
@@ -111,6 +167,12 @@ export function ScanResults({
       const data: Scan = await res.json();
       if (!active) return;
       setScan(data);
+      tick += 1;
+      if (data.status === "pending") {
+        setProgressStep(0);
+      } else if (data.status === "running") {
+        setProgressStep(Math.min(2, 1 + Math.floor(tick / 2)));
+      }
 
       if (data.status === "completed") {
         const fr = await fetch(`/api/scans/${scanId}/findings`);
@@ -162,7 +224,8 @@ export function ScanResults({
     };
   }, [findings]);
 
-  const hasFindings = findings.length > 0;
+  const complianceClean = scan?.status === "completed" && complianceFindings.length === 0;
+  const noFindingsAtAll = findings.length === 0;
 
   return (
     <section className={styles.wrap}>
@@ -177,12 +240,40 @@ export function ScanResults({
         {scan ? (STATUS_TEXT[scan.status] ?? scan.status) : "Загрузка…"}
       </p>
       {busy ? (
-        <div className={styles.loader}>
-          <div className={styles.loaderBar} />
+        <>
+          <ol className={styles.steps}>
+            {STEPS.map((label, index) => (
+              <li
+                key={label}
+                className={
+                  index <= progressStep
+                    ? styles.stepActive
+                    : styles.stepPending
+                }
+              >
+                {label}
+              </li>
+            ))}
+          </ol>
+          <div className={styles.loader}>
+            <div className={styles.loaderBar} />
+          </div>
+        </>
+      ) : null}
+      {scan?.status === "completed" && scan.context ? (
+        <CheckContextPanel context={scan.context} />
+      ) : null}
+      {complianceClean ? (
+        <div className={styles.successBanner}>
+          По 152-ФЗ на проверенной странице нарушений со штрафом не найдено.
         </div>
       ) : null}
       {scan?.status === "completed" ? (
-        hasFindings ? (
+        noFindingsAtAll ? (
+          <p className={styles.sectionEmpty}>
+            Замечаний по 152-ФЗ и техническому прогнозу не найдено.
+          </p>
+        ) : (
           <>
             <div className={styles.totalsBlock} role="status">
               <div
@@ -251,10 +342,6 @@ export function ScanResults({
               )}
             </section>
           </>
-        ) : (
-          <p className={styles.itemMeta}>
-            Замечаний по 152-ФЗ на главной странице не найдено.
-          </p>
         )
       ) : null}
     </section>

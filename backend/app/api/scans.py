@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,10 +19,19 @@ class ScanCreateRequest(BaseModel):
     target_url: str = Field(..., min_length=8, max_length=2048)
 
 
+class ScanContext(BaseModel):
+    scope: str | None = None
+    privacy_found: bool | None = None
+    privacy_source: str | None = None
+    consent_found: bool | None = None
+    consent_source: str | None = None
+
+
 class ScanResponse(BaseModel):
     id: int
     target_url: str
     status: str
+    context: ScanContext | None = None
 
 
 class FindingResponse(BaseModel):
@@ -65,7 +76,23 @@ async def create_scan(
 
     background_tasks.add_task(_run_scan_task, scan.id)
 
-    return ScanResponse(id=scan.id, target_url=scan.target_url, status=scan.status)
+    return _scan_response(scan)
+
+
+def _scan_response(scan: Scan) -> ScanResponse:
+    ctx: ScanContext | None = None
+    if scan.context_json:
+        try:
+            raw = json.loads(scan.context_json)
+            ctx = ScanContext(**raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            ctx = None
+    return ScanResponse(
+        id=scan.id,
+        target_url=scan.target_url,
+        status=scan.status,
+        context=ctx,
+    )
 
 
 @router.get("/{scan_id}", response_model=ScanResponse)
@@ -73,7 +100,7 @@ async def get_scan(scan_id: int, session: AsyncSession = Depends(get_db)) -> Sca
     scan = await session.get(Scan, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail="Скан не найден")
-    return ScanResponse(id=scan.id, target_url=scan.target_url, status=scan.status)
+    return _scan_response(scan)
 
 
 @router.get("/{scan_id}/findings", response_model=list[FindingResponse])

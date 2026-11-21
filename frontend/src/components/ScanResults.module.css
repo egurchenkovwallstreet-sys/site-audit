@@ -274,3 +274,89 @@
 .penalty_green {
   color: color-mix(in srgb, var(--text) 58%, var(--ok));
 }
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 calc(1rem * var(--ui));
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.45rem * var(--ui));
+}
+
+.stepPending,
+.stepActive {
+  font-size: calc(0.88rem * var(--ui));
+  padding-left: calc(1.1rem * var(--ui));
+  position: relative;
+  color: var(--text-secondary);
+}
+
+.stepActive {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.stepActive::before,
+.stepPending::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: calc(6px * var(--ui));
+  height: calc(6px * var(--ui));
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.stepActive::before {
+  background: var(--accent);
+}
+
+.contextBlock {
+  margin-bottom: calc(1.1rem * var(--ui));
+  padding: calc(1rem * var(--ui)) calc(1.1rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+
+.contextTitle {
+  font-weight: 600;
+  margin: 0 0 calc(0.45rem * var(--ui));
+  font-size: calc(0.95rem * var(--ui));
+}
+
+.contextList {
+  list-style: none;
+  padding: 0;
+  margin: calc(0.5rem * var(--ui)) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.35rem * var(--ui));
+  font-size: calc(0.88rem * var(--ui));
+}
+
+.contextMeta {
+  color: var(--text-secondary);
+}
+
+.contextOk {
+  color: color-mix(in srgb, var(--text) 42%, var(--ok));
+  font-weight: 500;
+}
+
+.contextWarn {
+  color: color-mix(in srgb, var(--text) 42%, var(--warn));
+  font-weight: 500;
+}
+
+.successBanner {
+  margin-bottom: calc(1rem * var(--ui));
+  padding: calc(1rem * var(--ui)) calc(1.1rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--border));
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+  font-size: calc(0.95rem * var(--ui));
+  line-height: 1.45;
+}

@@ -39,9 +39,9 @@ export function HomeClient() {
             />
           ) : null}
         </div>
-        <p className={styles.subscription}>
-          Нужно проверять много сайтов? Подписка 1490 ₽/мес — расширенный
-          отчёт 990 ₽ вместо 1990 ₽.
+        <p className={styles.scopeNote}>
+          Сейчас проверяем главную страницу, типовые ссылки на политику ПДн,
+          robots.txt и sitemap.xml — без ручного вмешательства.
         </p>
         <p className={styles.disclaimer}>
           Сервис выполняет только безопасные проверки. Мы не эксплуатируем

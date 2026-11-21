@@ -116,6 +116,7 @@ class Scan(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    context_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     access_level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ownership_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
