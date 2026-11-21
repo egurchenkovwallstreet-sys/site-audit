@@ -29,6 +29,8 @@ class ScanContext(BaseModel):
     scanned_url: str | None = None
     used_fallback: bool | None = None
     tried_urls: list[str] | None = None
+    scanned_urls: list[str] | None = None
+    pages_checked: int | None = None
 
 
 class ScanResponse(BaseModel):

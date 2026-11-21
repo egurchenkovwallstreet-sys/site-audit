@@ -22,6 +22,8 @@ type ScanContext = {
   scanned_url?: string;
   used_fallback?: boolean;
   tried_urls?: string[];
+  scanned_urls?: string[];
+  pages_checked?: number;
 };
 
 type Scan = {
@@ -117,10 +119,26 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
   return (
     <div className={styles.contextBlock}>
       <p className={styles.contextTitle}>Что проверили</p>
-      {context.used_fallback && context.scanned_url ? (
+      {context.pages_checked != null && context.pages_checked > 0 ? (
         <p className={styles.contextMeta}>
-          Проверена страница: {context.scanned_url} (главная закрыта антиботом).
+          Проверено страниц: {context.pages_checked}
+          {context.used_fallback && context.scanned_url
+            ? ` (вход: ${context.scanned_url}, главная под антиботом)`
+            : ""}
+          .
         </p>
+      ) : null}
+      {context.scanned_urls && context.scanned_urls.length > 0 ? (
+        <details className={styles.contextDetails}>
+          <summary className={styles.contextMeta}>Список страниц</summary>
+          <ul className={styles.contextList}>
+            {context.scanned_urls.map((u) => (
+              <li key={u}>
+                <span className={styles.contextMeta}>{u}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
       {context.scope ? (
         <p className={styles.contextMeta}>{context.scope}</p>

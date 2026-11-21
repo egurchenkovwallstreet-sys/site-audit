@@ -25,12 +25,13 @@ from app.compliance.tracking_scripts import (
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
-from app.scan.page_fetch import fetch_for_scan
+from app.scan.site_scan import fetch_scan_site
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
 
 CHECK_SCOPE_NOTE = (
-    "Проверены главная страница, типовые ссылки на политику, robots.txt и sitemap.xml."
+    "До 15 страниц того же сайта: точка входа, переходы с неё и выборка из sitemap; "
+    "плюс robots.txt и типовые адреса политики."
 )
 
 
@@ -67,13 +68,19 @@ async def _locate_privacy_policy(
     html: str,
     *,
     spa: SpaBundleScan,
+    extra_pages: list[tuple[str, str]] | None = None,
 ) -> tuple[bool, str | None]:
-    if _main_page_has_privacy_signal(html):
-        return True, "Ссылка или текст на главной странице"
-    if _raw_html_mentions_privacy_url(page_url, html):
-        return True, "Упоминание политики в коде главной страницы"
+    for url, body in [(page_url, html), *(extra_pages or [])]:
+        if _main_page_has_privacy_signal(body):
+            return True, f"Ссылка или текст на странице: {url}"
+        if _raw_html_mentions_privacy_url(url, body):
+            return True, f"Упоминание политики на странице: {url}"
 
     candidates = collect_privacy_candidate_urls(page_url, html)
+    for url, body in extra_pages or []:
+        candidates = _merge_candidates(
+            candidates, collect_privacy_candidate_urls(url, body)
+        )
     robots = await fetch_target_page(urljoin(page_url, "/robots.txt"))
     if robots.html and len(robots.html) < 500_000:
         candidates = _merge_candidates(
@@ -120,12 +127,30 @@ def _has_cookie_banner(html: str) -> bool:
     return False
 
 
-def run_compliance_checks(
-    html: str, *, privacy_found: bool, consent_markers_found: bool
+def run_compliance_checks_site(
+    pages: list[tuple[str, str]],
+    *,
+    privacy_found: bool,
+    consent_markers_found: bool,
 ) -> list[RawFinding]:
     findings: list[RawFinding] = []
+    page_count = len(pages)
 
-    tracking = detect_measurable_tracking(html)
+    tracking: set[str] = set()
+    foreign: set[str] = set()
+    form_actions: list[str] = []
+    form_seen: set[str] = set()
+
+    for _, html in pages:
+        tracking.update(detect_measurable_tracking(html))
+        foreign.update(detect_foreign_analytics(html))
+        for action in forms_missing_pdn_consent(html):
+            if action not in form_seen:
+                form_seen.add(action)
+                form_actions.append(action)
+
+    tracking_list = sorted(tracking)
+    foreign_list = sorted(foreign)
 
     if not privacy_found:
         findings.append(
@@ -134,52 +159,51 @@ def run_compliance_checks(
                 title="Не опубликована политика обработки ПДн",
                 description=(
                     format_finding_preamble("no_privacy_policy")
-                    + "Документ не найден на главной и по типовым адресам "
-                    "(/privacy, политика в футере, robots/sitemap, SPA). "
-                    "Если политика только во внутреннем разделе — проверьте по прямой ссылке."
+                    + f"На {page_count} проверенных страницах и типовых адресах "
+                    "документ не найден. "
+                    "Если политика только во внутреннем разделе — укажите прямую ссылку."
                 ),
                 severity="medium",
             )
         )
 
-    if tracking and not consent_markers_found and not _has_cookie_banner(html):
+    if tracking_list and not consent_markers_found:
         findings.append(
             RawFinding(
                 penalty_code="no_cookie_banner",
                 title="Нет согласия при подключённой аналитике",
                 description=(
                     format_finding_preamble("no_cookie_banner")
-                    + f"Обнаружены скрипты аналитики/рекламы: {', '.join(tracking)}. "
-                    "Баннер или иной механизм согласия на cookie не найден."
+                    + f"На {page_count} страницах найдены скрипты: {', '.join(tracking_list)}. "
+                    "Баннер или иной механизм согласия на cookie не обнаружен."
                 ),
                 severity="high",
             )
         )
 
-    forms = forms_missing_pdn_consent(html)
-    if forms:
+    if form_actions:
         findings.append(
             RawFinding(
                 penalty_code="processing_without_consent",
                 title="Сбор ПДн в форме без согласия",
                 description=(
                     format_finding_preamble("processing_without_consent")
-                    + f"Форм с полями ПДн без согласия: {len(forms)} "
-                    f"(поиск и вход не учитываются). Пример: {forms[0]}."
+                    + f"На {page_count} страницах: форм с ПДн без согласия — "
+                    f"{len(form_actions)} (поиск и вход не учитываются). "
+                    f"Пример: {form_actions[0]}."
                 ),
                 severity="high",
             )
         )
 
-    foreign = detect_foreign_analytics(html)
-    if foreign:
+    if foreign_list:
         findings.append(
             RawFinding(
                 penalty_code="foreign_sdk_transfer",
                 title="Иностранная аналитика/реклама (трансграничная передача)",
                 description=(
                     format_finding_preamble("foreign_sdk_transfer")
-                    + f"Подключены скрипты: {', '.join(foreign)}."
+                    + f"На проверенных страницах подключены: {', '.join(foreign_list)}."
                 ),
                 severity="high",
             )
@@ -225,14 +249,15 @@ def compliance_context_dict(
     scanned_url: str | None = None,
     used_fallback: bool = False,
     tried_urls: list[str] | None = None,
+    scanned_urls: list[str] | None = None,
+    pages_checked: int | None = None,
 ) -> dict[str, Any]:
     scope = CHECK_SCOPE_NOTE
     if used_fallback and scanned_url and requested_url:
         scope = (
-            f"Запрошен адрес {requested_url}. Из‑за антибота на главной "
-            f"проверена открытая страница {scanned_url} "
-            f"(автоматический переход на /contacts/ и аналоги). "
-            "Дополнительно: типовые ссылки на политику, robots.txt, sitemap.xml."
+            f"Запрошен {requested_url}. Точка входа — {scanned_url} "
+            f"(главная закрыта антиботом, переход на /contacts/ и аналоги). "
+            f"Далее до 15 внутренних страниц с точки входа и из sitemap."
         )
     ctx: dict[str, Any] = {
         "scope": scope,
@@ -249,14 +274,20 @@ def compliance_context_dict(
         ctx["used_fallback"] = True
     if tried_urls:
         ctx["tried_urls"] = tried_urls
+    if scanned_urls:
+        ctx["scanned_urls"] = scanned_urls
+    if pages_checked is not None:
+        ctx["pages_checked"] = pages_checked
     return ctx
 
 
 async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
     normalized = validate_target_url(url)
-    scan = await fetch_for_scan(normalized)
-    fetch = scan.result
-    page_url = scan.fetched_url
+    bundle = await fetch_scan_site(normalized)
+    entry = bundle.entry
+    fetch = entry.result
+    page_url = entry.fetched_url
+    page_pairs = bundle.page_pairs
 
     def _empty_ctx() -> dict[str, Any]:
         return compliance_context_dict(
@@ -266,25 +297,29 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
             consent_source=None,
             requested_url=normalized,
             scanned_url=page_url,
-            used_fallback=scan.used_fallback,
-            tried_urls=scan.tried_urls,
+            used_fallback=entry.used_fallback,
+            tried_urls=entry.tried_urls,
+            scanned_urls=[],
+            pages_checked=0,
         )
 
-    if not scan.html_available:
+    if not bundle.html_available:
         return [
             blocked_scan_finding(
-                "compliance", fetch, tried_urls=scan.tried_urls
+                "compliance", fetch, tried_urls=entry.tried_urls
             )
         ], _empty_ctx()
 
-    html = scan.html or ""
+    html = entry.html or ""
+    extra_pages = [(u, h) for u, h in page_pairs if u.rstrip("/") != page_url.rstrip("/")]
     spa = await analyze_spa_bundles(page_url, html)
     privacy_found, privacy_source = await _locate_privacy_policy(
-        page_url, html, spa=spa
+        page_url, html, spa=spa, extra_pages=extra_pages
     )
 
-    consent_in_html = _has_cookie_banner(html)
-    consent_found = spa.consent_found or consent_in_html
+    consent_found = spa.consent_found or any(
+        _has_cookie_banner(h) for _, h in page_pairs
+    )
     consent_source: str | None = None
     if spa.consent_found:
         consent_source = (
@@ -292,17 +327,21 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
             if spa.consent_script_url
             else "Код приложения (SPA)"
         )
-    elif consent_in_html:
-        consent_source = "Признаки согласия в HTML главной страницы"
+    else:
+        for url, body in page_pairs:
+            if _has_cookie_banner(body):
+                consent_source = f"Признаки согласия на странице: {url}"
+                break
 
     findings = [
         enrich_finding(f)
-        for f in run_compliance_checks(
-            html,
+        for f in run_compliance_checks_site(
+            page_pairs,
             privacy_found=privacy_found,
             consent_markers_found=consent_found,
         )
     ]
+    scanned_urls = [p.url for p in bundle.pages]
     ctx = compliance_context_dict(
         privacy_found=privacy_found,
         privacy_source=privacy_source,
@@ -310,7 +349,9 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         consent_source=consent_source,
         requested_url=normalized,
         scanned_url=page_url,
-        used_fallback=scan.used_fallback,
-        tried_urls=scan.tried_urls,
+        used_fallback=entry.used_fallback,
+        tried_urls=entry.tried_urls,
+        scanned_urls=scanned_urls,
+        pages_checked=len(scanned_urls),
     )
     return findings, ctx

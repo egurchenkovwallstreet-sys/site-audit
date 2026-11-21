@@ -327,6 +327,14 @@
   font-size: calc(0.95rem * var(--ui));
 }
 
+.contextDetails {
+  margin-top: calc(0.35rem * var(--ui));
+}
+
+.contextDetails summary {
+  cursor: pointer;
+}
+
 .contextList {
   list-style: none;
   padding: 0;
