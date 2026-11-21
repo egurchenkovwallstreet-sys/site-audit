@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.scan.fetch import PageFetchResult
+from app.scan.page_fetch import fetch_block_reason
 
 
 def blocked_scan_finding(
@@ -9,47 +10,65 @@ def blocked_scan_finding(
     *,
     tried_urls: list[str] | None = None,
 ) -> dict:
-    """Finding when the site could not be fetched for HTML-based checks."""
+    """Сбой доступа — не нарушение 152-ФЗ (type=access)."""
     extra_tried = ""
     if tried_urls and len(tried_urls) > 1:
         extra_tried = (
-            " Пробовали альтернативные страницы (в т.ч. /contacts/): "
-            + ", ".join(tried_urls[1:6])
+            " Пробовали: "
+            + ", ".join(tried_urls[1:8])
             + "."
         )
+
+    reason = fetch_block_reason(fetch.html, fetch.status_code)
 
     if fetch.fetch_error and fetch.status_code is None:
         title = "Не удалось подключиться к сайту"
         description = (
-            f"При загрузке страницы произошла ошибка: {fetch.fetch_error}. "
-            f"Проверка по HTML не выполнена.{extra_tried}"
+            f"Ошибка сети: {fetch.fetch_error}. "
+            "Проверка по HTML не выполнена."
+            f"{extra_tried}"
         )
         severity = "high"
     elif fetch.access_blocked:
         title = "Сайт ограничил автоматическую проверку"
         description = (
-            f"Сервер ответил кодом HTTP {fetch.status_code}. "
-            "Так бывает у крупных площадок с антибот-защитой (например, Avito). "
-            "Проверка 152-ФЗ по содержимому не выполнена; "
-            "ниже — только то, что удалось снять с ответа сервера."
+            f"HTTP {fetch.status_code}. Антибот или WAF (как у Avito). "
+            "Содержимое страниц для 152-ФЗ не прочитано."
+            f"{extra_tried}"
+        )
+        severity = "medium"
+    elif reason == "antibot":
+        title = "Страница похожа на антибот, а не на сайт"
+        description = (
+            f"HTTP {fetch.status_code}, но в ответе заглушка/капча, а не контент сайта. "
+            "Это не штраф по 152-ФЗ — мы просто не смогли прочитать HTML."
+            f"{extra_tried}"
+        )
+        severity = "medium"
+    elif reason == "empty_body":
+        title = "Пустой ответ сервера"
+        description = (
+            f"HTTP {fetch.status_code}, но тела страницы нет. "
+            "Проверка по HTML не выполнена."
             f"{extra_tried}"
         )
         severity = "medium"
     else:
-        title = "Главная страница недоступна для анализа"
+        title = "Не удалось проанализировать HTML"
         description = (
             f"HTTP {fetch.status_code or '—'}. "
-            "Проверка 152-ФЗ по HTML не выполнена."
+            "Проверка 152-ФЗ по содержимому не выполнена."
+            f"{extra_tried}"
         )
         severity = "medium"
 
     remediation = (
-        "Откройте сайт в браузере и проверьте политику конфиденциальности вручную "
-        "или повторите проверку позже."
+        "Укажите прямую ссылку (например, /contacts/) или повторите позже. "
+        "Для сайтов с жёсткой защитой позже добавим браузерную проверку."
     )
     color = "yellow" if severity == "medium" else "red"
     return {
-        "type": kind,
+        "type": "access",
         "severity": severity,
         "title": title,
         "description": description,

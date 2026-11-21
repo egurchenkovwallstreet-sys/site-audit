@@ -17,20 +17,24 @@ CONTACT_FALLBACK_PATHS = (
     "/info/contacts/",
 )
 
-BOT_WALL_MARKERS = (
-    "captcha",
+# Только явные признаки страницы-заглушки (не слово «антибот» в тексте политики).
+HARD_BOT_MARKERS = (
     "cf-challenge",
-    "ddos-guard",
-    "servicepipe",
-    "qrator",
-    "checking your browser",
-    "access denied",
-    "доступ ограничен",
-    "подтвердите, что вы не робот",
-    "антибот",
-    "antibot",
     "challenge-platform",
     "__cf_chl",
+    "cdn-cgi/challenge",
+    "checking your browser",
+    "g-recaptcha",
+    "hcaptcha.com",
+    "captcha-delivery",
+    "interstitial",
+)
+
+SOFT_BOT_MARKERS = (
+    "подтвердите, что вы не робот",
+    "доступ ограничен",
+    "access denied",
+    "please enable javascript",
 )
 
 
@@ -48,9 +52,17 @@ class ScanPageFetch:
 
     @property
     def html_available(self) -> bool:
-        return self.result.html_available and not looks_like_bot_wall(
-            self.result.html, self.result.status_code
-        )
+        return page_is_readable(self.result.html, self.result.status_code)
+
+
+def page_is_readable(html: str | None, status_code: int | None) -> bool:
+    if status_code is not None and status_code >= 400:
+        return False
+    if status_code in (403, 429, 503):
+        return False
+    if not html or len(html.strip()) < 80:
+        return False
+    return not looks_like_bot_wall(html, status_code)
 
 
 def looks_like_bot_wall(html: str | None, status_code: int | None) -> bool:
@@ -58,8 +70,30 @@ def looks_like_bot_wall(html: str | None, status_code: int | None) -> bool:
         return True
     if not html:
         return False
+    text = html.strip()
+    if len(text) < 80:
+        return True
     lower = html.lower()
-    return any(marker in lower for marker in BOT_WALL_MARKERS)
+    head = lower[:4000]
+    if any(marker in lower for marker in HARD_BOT_MARKERS):
+        return True
+    if len(text) < 5000 and any(marker in head for marker in SOFT_BOT_MARKERS):
+        return True
+    if len(text) < 3500 and "captcha" in head and "<form" in head:
+        return True
+    return False
+
+
+def fetch_block_reason(html: str | None, status_code: int | None) -> str:
+    if status_code in (403, 429, 503):
+        return "http_block"
+    if not html or len(html.strip()) < 80:
+        return "empty_body"
+    if looks_like_bot_wall(html, status_code):
+        return "antibot"
+    if status_code is not None and status_code >= 400:
+        return "http_error"
+    return "unknown"
 
 
 def _is_contact_path(path: str) -> bool:
@@ -89,7 +123,8 @@ def _fallback_urls(requested: str) -> list[str]:
 async def fetch_for_scan(requested_url: str) -> ScanPageFetch:
     tried: list[str] = [requested_url]
     primary = await fetch_target_page(requested_url)
-    if primary.html_available and not looks_like_bot_wall(primary.html, primary.status_code):
+
+    if page_is_readable(primary.html, primary.status_code):
         return ScanPageFetch(
             requested_url=requested_url,
             fetched_url=requested_url,
@@ -100,9 +135,7 @@ async def fetch_for_scan(requested_url: str) -> ScanPageFetch:
     for alt in _fallback_urls(requested_url):
         tried.append(alt)
         alt_result = await fetch_target_page(alt)
-        if alt_result.html_available and not looks_like_bot_wall(
-            alt_result.html, alt_result.status_code
-        ):
+        if page_is_readable(alt_result.html, alt_result.status_code):
             return ScanPageFetch(
                 requested_url=requested_url,
                 fetched_url=alt,

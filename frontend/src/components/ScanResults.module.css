@@ -368,3 +368,18 @@
   font-size: calc(0.95rem * var(--ui));
   line-height: 1.45;
 }
+
+.accessBanner {
+  margin-bottom: calc(1rem * var(--ui));
+  padding: calc(1rem * var(--ui)) calc(1.1rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  font-size: calc(0.95rem * var(--ui));
+  line-height: 1.45;
+}
+
+.accessTitle {
+  font-weight: 600;
+  margin: 0 0 calc(0.35rem * var(--ui));
+}

@@ -4,7 +4,12 @@ from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
 from app.scan.fetch import PageFetchResult, fetch_target_page
-from app.scan.page_fetch import ScanPageFetch, fetch_for_scan, looks_like_bot_wall
+from app.scan.page_fetch import (
+    ScanPageFetch,
+    fetch_for_scan,
+    looks_like_bot_wall,
+    page_is_readable,
+)
 from app.scan.site_pages import MAX_SCAN_PAGES, plan_scan_page_urls, sitemap_page_urls
 
 
@@ -23,7 +28,7 @@ class SiteScanBundle:
 
     @property
     def html_available(self) -> bool:
-        return self.entry.html_available
+        return page_is_readable(self.entry.html, self.entry.result.status_code)
 
     @property
     def page_pairs(self) -> list[tuple[str, str]]:
@@ -36,7 +41,7 @@ async def fetch_scan_site(
     max_pages: int = MAX_SCAN_PAGES,
 ) -> SiteScanBundle:
     entry = await fetch_for_scan(requested_url)
-    if not entry.html_available or not entry.html:
+    if not page_is_readable(entry.html, entry.result.status_code):
         return SiteScanBundle(requested_url=requested_url, entry=entry, pages=[])
 
     entry_html = entry.html

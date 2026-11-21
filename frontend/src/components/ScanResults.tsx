@@ -221,7 +221,9 @@ export function ScanResults({
 
   const busy = !scan || scan.status === "pending" || scan.status === "running";
 
-  const { complianceFindings, breachFindings, riskSummary } = useMemo(() => {
+  const { complianceFindings, breachFindings, accessFindings, riskSummary } =
+    useMemo(() => {
+    const accessFindings = findings.filter((f) => f.type === "access");
     const complianceFindings = sortFindings(
       findings.filter((f) => f.type === "compliance"),
     );
@@ -238,6 +240,7 @@ export function ScanResults({
       if (c === "yellow") yellow += 1;
     }
     return {
+      accessFindings,
       complianceFindings,
       breachFindings,
       riskSummary: {
@@ -251,8 +254,11 @@ export function ScanResults({
     };
   }, [findings]);
 
-  const complianceClean = scan?.status === "completed" && complianceFindings.length === 0;
-  const noFindingsAtAll = findings.length === 0;
+  const complianceClean =
+    scan?.status === "completed" &&
+    complianceFindings.length === 0 &&
+    accessFindings.length === 0;
+  const noFindingsAtAll = findings.filter((f) => f.type !== "access").length === 0;
 
   return (
     <section className={styles.wrap}>
@@ -287,7 +293,15 @@ export function ScanResults({
           </div>
         </>
       ) : null}
-      {scan?.status === "completed" && scan.context ? (
+      {accessFindings.length > 0 ? (
+        <div className={styles.accessBanner} role="status">
+          <p className={styles.accessTitle}>{accessFindings[0].title}</p>
+          <p className={styles.itemMeta}>{accessFindings[0].description}</p>
+        </div>
+      ) : null}
+      {scan?.status === "completed" &&
+      scan.context &&
+      (scan.context.pages_checked ?? 0) > 0 ? (
         <CheckContextPanel context={scan.context} />
       ) : null}
       {complianceClean ? (
