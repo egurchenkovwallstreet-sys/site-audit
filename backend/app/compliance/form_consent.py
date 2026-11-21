@@ -270,7 +270,12 @@ def _pdn_field_signature(form: Tag) -> tuple[tuple[str, str], ...]:
             itype = inp.name
         name = (inp.get("name") or "").lower()
         if _input_suggests_pdn(inp) or name in ("name", "phone"):
-            parts.append((name or itype, itype))
+            if name == "phone":
+                parts.append(("phone", "phone"))
+            elif name == "name":
+                parts.append(("name", "text"))
+            else:
+                parts.append((name or itype, itype))
     return tuple(sorted(parts))
 
 
