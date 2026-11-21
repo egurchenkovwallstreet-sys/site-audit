@@ -5,17 +5,16 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
+from app.compliance.privacy_detection import (
+    MAX_EXTRA_FETCHES,
+    _main_page_has_privacy_signal,
+    _page_content_is_privacy_policy,
+    collect_privacy_candidate_urls,
+)
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
 
-PRIVACY_KEYWORDS = (
-    "политик",
-    "конфиденциальн",
-    "персональн",
-    "privacy",
-    "personal data",
-)
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
 FOREIGN_SDK_MARKERS = (
     "firebase",
@@ -45,15 +44,20 @@ def validate_target_url(url: str) -> str:
     return url.strip()
 
 
-def _has_privacy_policy(html: str) -> bool:
-    soup = BeautifulSoup(html, "html.parser")
-    text_blob = soup.get_text(" ", strip=True).lower()
-    for a in soup.find_all("a", href=True):
-        href = a.get("href", "").lower()
-        label = a.get_text(" ", strip=True).lower()
-        if any(k in href or k in label for k in PRIVACY_KEYWORDS):
-            return True
-    return any(k in text_blob for k in ("политика конфиденциальности", "персональные данные"))
+async def _locate_privacy_policy(page_url: str, html: str) -> tuple[bool, str | None]:
+    if _main_page_has_privacy_signal(html):
+        return True, page_url
+
+    for candidate in collect_privacy_candidate_urls(page_url, html)[:MAX_EXTRA_FETCHES]:
+        fetched = await fetch_target_page(candidate)
+        if not fetched.html_available or not fetched.html:
+            continue
+        if _page_content_is_privacy_policy(fetched.html):
+            return True, candidate
+        if _main_page_has_privacy_signal(fetched.html):
+            return True, candidate
+
+    return False, None
 
 
 def _has_cookie_banner(html: str) -> bool:
@@ -107,17 +111,19 @@ def _detect_foreign_sdks(html: str) -> list[str]:
     return found
 
 
-def run_compliance_checks(html: str) -> list[RawFinding]:
+def run_compliance_checks(html: str, *, privacy_found: bool) -> list[RawFinding]:
     findings: list[RawFinding] = []
 
-    if not _has_privacy_policy(html):
+    if not privacy_found:
         findings.append(
             RawFinding(
                 penalty_code="no_privacy_policy",
                 title="Не найдена политика конфиденциальности",
                 description=(
-                    "На странице нет ссылки или текста политики конфиденциальности "
-                    "по ключевым словам."
+                    "На проверенной странице и по типовым ссылкам (/privacy, "
+                    "политика конфиденциальности и т.п.) документ не обнаружен. "
+                    "Если политика есть только во внутренних разделах или открывается "
+                    "через JavaScript, укажите прямую ссылку на неё в проверке."
                 ),
                 severity="medium",
             )
@@ -200,5 +206,9 @@ async def check_url_compliance(url: str) -> list[dict]:
         findings.append(blocked_scan_finding("compliance", fetch))
         return findings
 
-    findings.extend(enrich_finding(f) for f in run_compliance_checks(fetch.html or ""))
+    html = fetch.html or ""
+    privacy_found, _privacy_source = await _locate_privacy_policy(normalized, html)
+    findings.extend(
+        enrich_finding(f) for f in run_compliance_checks(html, privacy_found=privacy_found)
+    )
     return findings
