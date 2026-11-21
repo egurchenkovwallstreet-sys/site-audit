@@ -6,7 +6,8 @@ import {
   resolveRiskColor,
   severityLabel,
   sortFindings,
-  sumPenalties,
+  sumBreachPenalties,
+  sumCompliancePenalties,
   totalPenaltyColor,
   type RiskColor,
 } from "@/lib/findingRisk";
@@ -88,14 +89,23 @@ export function ScanResults({
   const riskSummary = useMemo(() => {
     let red = 0;
     let yellow = 0;
-    const totalPenalty = sumPenalties(findings);
-    const totalColor = totalPenaltyColor(totalPenalty);
+    const complianceTotal = sumCompliancePenalties(findings);
+    const breachTotal = sumBreachPenalties(findings);
+    const complianceColor = totalPenaltyColor(complianceTotal);
+    const breachColor = totalPenaltyColor(breachTotal);
     for (const f of findings) {
       const c = resolveRiskColor(f);
       if (c === "red") red += 1;
       if (c === "yellow") yellow += 1;
     }
-    return { red, yellow, totalPenalty, totalColor };
+    return {
+      red,
+      yellow,
+      complianceTotal,
+      breachTotal,
+      complianceColor,
+      breachColor,
+    };
   }, [findings]);
 
   return (
@@ -118,24 +128,36 @@ export function ScanResults({
       {scan?.status === "completed" ? (
         findings.length > 0 ? (
           <>
-            {riskSummary.totalPenalty > 0 ? (
+            <div className={styles.totalsBlock} role="status">
               <div
-                className={`${styles.totalBanner} ${styles[`total_${riskSummary.totalColor}`]}`}
-                role="status"
+                className={`${styles.totalRow} ${styles[`total_${riskSummary.complianceColor}`]}`}
               >
                 <p className={styles.totalLabel}>
-                  Максимальная сумма штрафов по выявленным пунктам
+                  Общая сумма штрафов по выявленным нарушениям 152-ФЗ
                 </p>
                 <p className={styles.totalAmount}>
-                  до {riskSummary.totalPenalty.toLocaleString("ru-RU")} ₽
-                </p>
-                <p className={styles.totalNote}>
-                  Сумма верхних пределов по каждому пункту (152-ФЗ и риск утечки
-                  через уязвимости). Фактический штраф назначает контролирующий
-                  орган.
+                  {riskSummary.complianceTotal > 0
+                    ? `до ${riskSummary.complianceTotal.toLocaleString("ru-RU")} ₽`
+                    : "нарушений со штрафом не найдено"}
                 </p>
               </div>
-            ) : null}
+              <div
+                className={`${styles.totalRow} ${styles.totalRowDivider} ${styles[`total_${riskSummary.breachColor}`]}`}
+              >
+                <p className={styles.totalLabel}>
+                  Предполагаемая сумма штрафов при утечке или взломе
+                </p>
+                <p className={styles.totalAmount}>
+                  {riskSummary.breachTotal > 0
+                    ? `до ${riskSummary.breachTotal.toLocaleString("ru-RU")} ₽`
+                    : "сценариев со штрафом не найдено"}
+                </p>
+              </div>
+              <p className={styles.totalNote}>
+                Суммы складывают верхние пределы по соответствующим пунктам.
+                Итог при проверке назначает контролирующий орган.
+              </p>
+            </div>
             {riskSummary.red > 0 || riskSummary.yellow > 0 ? (
               <p className={styles.summary}>
                 {riskSummary.red > 0 ? (

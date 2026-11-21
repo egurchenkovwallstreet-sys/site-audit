@@ -64,7 +64,7 @@
   }
 }
 
-.totalBanner {
+.totalsBlock {
   margin-bottom: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 14px;
@@ -72,31 +72,18 @@
   background: var(--surface);
 }
 
-.total_red {
-  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+.totalRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
 }
 
-.total_yellow {
-  border-color: color-mix(in srgb, var(--warn) 22%, var(--border));
-}
-
-.total_green {
-  border-color: color-mix(in srgb, var(--ok) 20%, var(--border));
-}
-
-.totalLabel {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.25rem;
-}
-
-.totalAmount {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  color: var(--text);
+.totalRowDivider {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
 }
 
 .total_red .totalAmount {
@@ -111,8 +98,24 @@
   color: color-mix(in srgb, var(--text) 92%, var(--ok));
 }
 
+.totalLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.totalAmount {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--text);
+  text-align: right;
+}
+
 .totalNote {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-size: 0.75rem;
   line-height: 1.4;
   color: var(--text-secondary);

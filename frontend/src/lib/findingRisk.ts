@@ -47,8 +47,24 @@ export function sortFindings<T extends FindingLike & { id: number }>(items: T[])
   });
 }
 
+export type FindingWithType = FindingLike & { type: string };
+
 export function sumPenalties(items: FindingLike[]): number {
   return items.reduce((acc, f) => acc + (f.max_penalty ?? 0), 0);
+}
+
+/** Штрафы по уже выявленным нарушениям 152-ФЗ (не сценарии взлома). */
+export function sumCompliancePenalties(items: FindingWithType[]): number {
+  return items
+    .filter((f) => f.type === "compliance")
+    .reduce((acc, f) => acc + (f.max_penalty ?? 0), 0);
+}
+
+/** Суммарный потолок штрафов, если уязвимости приведут к утечке / взлому. */
+export function sumBreachPenalties(items: FindingWithType[]): number {
+  return items
+    .filter((f) => f.type === "security")
+    .reduce((acc, f) => acc + (f.max_penalty ?? 0), 0);
 }
 
 export function totalPenaltyColor(total: number): RiskColor {
