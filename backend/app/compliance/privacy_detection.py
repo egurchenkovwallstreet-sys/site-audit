@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -29,6 +29,8 @@ PRIVACY_LINK_HINTS = (
     "politika_konfid",
     "politika-konf",
     "confidencial",
+    "legal-documents",
+    "konfidencialnosti",
 )
 
 PRIVACY_TEXT_PHRASES = (
@@ -43,6 +45,9 @@ PRIVACY_TEXT_PHRASES = (
 
 # Типовые пути на российских и международных сайтах
 COMMON_PRIVACY_PATHS = (
+    "/legal-documents/politika_konfidencialnosti_0/",
+    "/legal-documents/politika_konfidencialnosti_0",
+    "/legal-documents/",
     "/privacy",
     "/privacy-policy",
     "/privacy_policy",
@@ -65,11 +70,16 @@ COMMON_PRIVACY_PATHS = (
 )
 
 _HREF_IN_HTML = re.compile(
-    r'href\s*=\s*["\']([^"\']*(?:privacy|konfid|конфид|personal|pdn|152|politika)[^"\']*)["\']',
+    r'href\s*=\s*["\']([^"\']*(?:privacy|konfid|конфид|personal|pdn|152|politika|legal-documents)[^"\']*)["\']',
     re.IGNORECASE,
 )
 
-MAX_EXTRA_FETCHES = 10
+_RAW_PRIVACY_IN_SOURCE = re.compile(
+    r"(?:https?://[^\s\"'<>]+)?/?legal-documents/[\w_-]*konfid[\w_-]*|politika[_-]konfidencialnosti[\w_-]*",
+    re.IGNORECASE,
+)
+
+MAX_EXTRA_FETCHES = 12
 
 
 def _same_origin(base: str, target: str) -> bool:
@@ -81,6 +91,60 @@ def _same_origin(base: str, target: str) -> bool:
 def _link_suggests_privacy(href: str, label: str) -> bool:
     blob = f"{href} {label}".lower()
     return any(h in blob for h in PRIVACY_LINK_HINTS)
+
+
+def _raw_html_mentions_privacy_url(page_url: str, html: str) -> bool:
+    """Упоминание URL политики в сыром HTML (SPA, JSON, back_location антибота)."""
+    blob = unquote(html).lower()
+    if _RAW_PRIVACY_IN_SOURCE.search(blob):
+        return True
+    if "legal-documents" in blob and "konfid" in blob:
+        return True
+    if "политик" in blob and "конфиденциальн" in blob:
+        return True
+    parsed = urlparse(page_url)
+    if parsed.path and _link_suggests_privacy(parsed.path, ""):
+        return _page_content_is_privacy_policy(html) or _main_page_has_privacy_signal(html)
+    return False
+
+
+def _privacy_urls_in_raw(page_url: str, html: str) -> list[str]:
+    blob = unquote(html)
+    found: list[str] = []
+    seen: set[str] = set()
+    for m in _RAW_PRIVACY_IN_SOURCE.finditer(blob):
+        fragment = m.group(0)
+        if fragment.startswith("http"):
+            full = fragment.split()[0].rstrip(".,;")
+        else:
+            full = urljoin(page_url, fragment if fragment.startswith("/") else f"/{fragment}")
+        key = full.split("#")[0].rstrip("/")
+        if _same_origin(page_url, key) and key not in seen:
+            seen.add(key)
+            found.append(key)
+    return found
+
+
+def privacy_urls_from_robots(page_url: str, robots_txt: str) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    for line in robots_txt.splitlines():
+        lower = line.lower()
+        if "konfid" not in lower and "legal-documents" not in lower and "privacy" not in lower:
+            continue
+        for part in line.split():
+            if not part.startswith("http") and "/" not in part:
+                continue
+            candidate = part if part.startswith("http") else urljoin(page_url, part)
+            if not _same_origin(page_url, candidate):
+                continue
+            if not _link_suggests_privacy(candidate, ""):
+                continue
+            key = candidate.split("#")[0].rstrip("/")
+            if key not in seen:
+                seen.add(key)
+                urls.append(key)
+    return urls
 
 
 def _main_page_has_privacy_signal(html: str) -> bool:
@@ -146,6 +210,9 @@ def collect_privacy_candidate_urls(page_url: str, html: str) -> list[str]:
 
     for path in COMMON_PRIVACY_PATHS:
         add(path)
+
+    for extra in _privacy_urls_in_raw(page_url, html):
+        add(extra)
 
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all("a", href=True):

@@ -5,11 +5,15 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
+from urllib.parse import urljoin
+
 from app.compliance.privacy_detection import (
     MAX_EXTRA_FETCHES,
     _main_page_has_privacy_signal,
     _page_content_is_privacy_policy,
+    _raw_html_mentions_privacy_url,
     collect_privacy_candidate_urls,
+    privacy_urls_from_robots,
 )
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
@@ -44,13 +48,37 @@ def validate_target_url(url: str) -> str:
     return url.strip()
 
 
+def _merge_candidates(primary: list[str], extra: list[str]) -> list[str]:
+    seen: set[str] = set()
+    merged: list[str] = []
+    for url in [*primary, *extra]:
+        key = url.rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            merged.append(url)
+    return merged
+
+
 async def _locate_privacy_policy(page_url: str, html: str) -> tuple[bool, str | None]:
-    if _main_page_has_privacy_signal(html):
+    if _main_page_has_privacy_signal(html) or _raw_html_mentions_privacy_url(
+        page_url, html
+    ):
         return True, page_url
 
-    for candidate in collect_privacy_candidate_urls(page_url, html)[:MAX_EXTRA_FETCHES]:
+    candidates = collect_privacy_candidate_urls(page_url, html)
+    robots = await fetch_target_page(urljoin(page_url, "/robots.txt"))
+    if robots.html and len(robots.html) < 500_000:
+        candidates = _merge_candidates(
+            candidates, privacy_urls_from_robots(page_url, robots.html)
+        )
+
+    for candidate in candidates[:MAX_EXTRA_FETCHES]:
         fetched = await fetch_target_page(candidate)
-        if not fetched.html_available or not fetched.html:
+        if not fetched.html:
+            continue
+        if _raw_html_mentions_privacy_url(candidate, fetched.html):
+            return True, candidate
+        if not fetched.html_available:
             continue
         if _page_content_is_privacy_policy(fetched.html):
             return True, candidate
