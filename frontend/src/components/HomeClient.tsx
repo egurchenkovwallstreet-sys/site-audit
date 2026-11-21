@@ -15,11 +15,16 @@ export function HomeClient() {
         <ThemeToggle />
       </header>
       <main className={styles.main}>
-        <p className={styles.eyebrow}>152-ФЗ + технические сигналы</p>
-        <h1 className={styles.title}>Проверьте свой сайт за 5 минут</h1>
-        <p className={styles.subtitle}>
-          Уязвимости и риски штрафов по 152-ФЗ. Без ручной работы.
-        </p>
+        <header className={styles.hero}>
+          <p className={styles.eyebrow}>152-ФЗ + технические сигналы</p>
+          <h1 className={styles.title}>
+            <span className={styles.titleLine}>Проверьте свой сайт</span>
+            <span className={styles.titleLineAccent}>за 5 минут</span>
+          </h1>
+          <p className={styles.subtitle}>
+            Уязвимости и риски штрафов по 152-ФЗ
+          </p>
+        </header>
         <div className={styles.panel}>
           {!active ? (
             <ScanForm
