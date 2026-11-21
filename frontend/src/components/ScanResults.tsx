@@ -44,6 +44,52 @@ const RISK_PILL_CLASS: Record<RiskColor, string> = {
   green: styles.riskPillGreen,
 };
 
+function FindingItems({ items }: { items: Finding[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+  return (
+    <ul className={styles.list}>
+      {items.map((f) => {
+        const risk = resolveRiskColor(f);
+        const isForecast = f.type === "security";
+        return (
+          <li
+            key={f.id}
+            className={`${styles.item} ${RISK_ITEM_CLASS[risk]}`}
+          >
+            <div className={styles.itemHead}>
+              <p className={styles.badge}>
+                {isForecast ? "Прогноз · безопасность" : "Факт · 152-ФЗ"}
+              </p>
+              <span
+                className={`${styles.riskPill} ${RISK_PILL_CLASS[risk]}`}
+              >
+                {severityLabel(f.severity)}
+              </span>
+            </div>
+            <p className={styles.itemTitle}>{f.title}</p>
+            <p className={styles.itemMeta}>{f.description}</p>
+            {f.legal_article ? (
+              <p className={styles.itemMeta}>{f.legal_article}</p>
+            ) : null}
+            {f.max_penalty != null ? (
+              <p
+                className={`${styles.penalty} ${styles[`penalty_${risk}`]}`}
+              >
+                {isForecast
+                  ? "Возможный штраф при утечке или взломе через эту уязвимость: до "
+                  : "Штраф по выявленному нарушению: до "}
+                {f.max_penalty.toLocaleString("ru-RU")} ₽
+              </p>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function ScanResults({
   scanId,
   targetUrl,
@@ -86,27 +132,37 @@ export function ScanResults({
 
   const busy = !scan || scan.status === "pending" || scan.status === "running";
 
-  const riskSummary = useMemo(() => {
-    let red = 0;
-    let yellow = 0;
+  const { complianceFindings, breachFindings, riskSummary } = useMemo(() => {
+    const complianceFindings = sortFindings(
+      findings.filter((f) => f.type === "compliance"),
+    );
+    const breachFindings = sortFindings(
+      findings.filter((f) => f.type === "security"),
+    );
     const complianceTotal = sumCompliancePenalties(findings);
     const breachTotal = sumBreachPenalties(findings);
-    const complianceColor = totalPenaltyColor(complianceTotal);
-    const breachColor = totalPenaltyColor(breachTotal);
+    let red = 0;
+    let yellow = 0;
     for (const f of findings) {
       const c = resolveRiskColor(f);
       if (c === "red") red += 1;
       if (c === "yellow") yellow += 1;
     }
     return {
-      red,
-      yellow,
-      complianceTotal,
-      breachTotal,
-      complianceColor,
-      breachColor,
+      complianceFindings,
+      breachFindings,
+      riskSummary: {
+        red,
+        yellow,
+        complianceTotal,
+        breachTotal,
+        complianceColor: totalPenaltyColor(complianceTotal),
+        breachColor: totalPenaltyColor(breachTotal),
+      },
     };
   }, [findings]);
+
+  const hasFindings = findings.length > 0;
 
   return (
     <section className={styles.wrap}>
@@ -126,14 +182,14 @@ export function ScanResults({
         </div>
       ) : null}
       {scan?.status === "completed" ? (
-        findings.length > 0 ? (
+        hasFindings ? (
           <>
             <div className={styles.totalsBlock} role="status">
               <div
-                className={`${styles.totalRow} ${styles[`total_${riskSummary.complianceColor}`]}`}
+                className={`${styles.totalRow} ${styles.totalRowFact} ${styles[`total_${riskSummary.complianceColor}`]}`}
               >
                 <p className={styles.totalLabel}>
-                  Общая сумма штрафов по выявленным нарушениям 152-ФЗ
+                  Факты: сумма штрафов по выявленным нарушениям 152-ФЗ
                 </p>
                 <p className={styles.totalAmount}>
                   {riskSummary.complianceTotal > 0
@@ -142,10 +198,10 @@ export function ScanResults({
                 </p>
               </div>
               <div
-                className={`${styles.totalRow} ${styles.totalRowDivider} ${styles[`total_${riskSummary.breachColor}`]}`}
+                className={`${styles.totalRow} ${styles.totalRowDivider} ${styles.totalRowForecast} ${styles[`total_${riskSummary.breachColor}`]}`}
               >
                 <p className={styles.totalLabel}>
-                  Предполагаемая сумма штрафов при утечке или взломе
+                  Прогноз: сумма штрафов при утечке или взломе
                 </p>
                 <p className={styles.totalAmount}>
                   {riskSummary.breachTotal > 0
@@ -154,62 +210,46 @@ export function ScanResults({
                 </p>
               </div>
               <p className={styles.totalNote}>
-                Суммы складывают верхние пределы по соответствующим пунктам.
-                Итог при проверке назначает контролирующий орган.
+                Верхняя строка — только зафиксированные нарушения. Нижняя — оценка
+                при эксплуатации уязвимостей. Итог назначает орган.
               </p>
             </div>
-            {riskSummary.red > 0 || riskSummary.yellow > 0 ? (
-              <p className={styles.summary}>
-                {riskSummary.red > 0 ? (
-                  <span className={styles.summaryCritical}>
-                    Критичных: {riskSummary.red}
-                  </span>
-                ) : null}
-                {riskSummary.yellow > 0 ? (
-                  <>
-                    {riskSummary.red > 0 ? " · " : ""}
-                    Средний риск: {riskSummary.yellow}
-                  </>
-                ) : null}
+
+            <section className={styles.sectionBlock} aria-labelledby="facts-heading">
+              <h3 id="facts-heading" className={styles.sectionTitle}>
+                Выявленные нарушения (факты)
+              </h3>
+              <p className={styles.sectionHint}>
+                То, что сервис нашёл на проверенной странице по 152-ФЗ.
               </p>
-            ) : null}
-            <ul className={styles.list}>
-              {findings.map((f) => {
-                const risk = resolveRiskColor(f);
-                return (
-                  <li
-                    key={f.id}
-                    className={`${styles.item} ${RISK_ITEM_CLASS[risk]}`}
-                  >
-                    <div className={styles.itemHead}>
-                      <p className={styles.badge}>
-                        {f.type === "security" ? "Безопасность" : "152-ФЗ"}
-                      </p>
-                      <span
-                        className={`${styles.riskPill} ${RISK_PILL_CLASS[risk]}`}
-                      >
-                        {severityLabel(f.severity)}
-                      </span>
-                    </div>
-                    <p className={styles.itemTitle}>{f.title}</p>
-                    <p className={styles.itemMeta}>{f.description}</p>
-                    {f.legal_article ? (
-                      <p className={styles.itemMeta}>{f.legal_article}</p>
-                    ) : null}
-                    {f.max_penalty != null ? (
-                      <p
-                        className={`${styles.penalty} ${styles[`penalty_${risk}`]}`}
-                      >
-                        {f.type === "security"
-                          ? "Возможный штраф при утечке или взломе через эту уязвимость: до "
-                          : "Штраф до "}
-                        {f.max_penalty.toLocaleString("ru-RU")} ₽
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
+              {complianceFindings.length > 0 ? (
+                <FindingItems items={complianceFindings} />
+              ) : (
+                <p className={styles.sectionEmpty}>
+                  По комплаенсу замечаний со штрафом не найдено.
+                </p>
+              )}
+            </section>
+
+            <section
+              className={styles.sectionBlock}
+              aria-labelledby="forecast-heading"
+            >
+              <h3 id="forecast-heading" className={styles.sectionTitle}>
+                Прогноз при утечке или взломе
+              </h3>
+              <p className={styles.sectionHint}>
+                Технические уязвимости и возможные штрафы, если их используют
+                для компрометации или утечки данных.
+              </p>
+              {breachFindings.length > 0 ? (
+                <FindingItems items={breachFindings} />
+              ) : (
+                <p className={styles.sectionEmpty}>
+                  Технических сценариев со штрафом не найдено.
+                </p>
+              )}
+            </section>
           </>
         ) : (
           <p className={styles.itemMeta}>
