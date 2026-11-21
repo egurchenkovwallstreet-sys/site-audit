@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import defaultdict
+
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
@@ -256,9 +258,23 @@ def _form_has_consent_checkbox(form: Tag) -> bool:
     return False
 
 
+def _form_field_signature(form: Tag) -> tuple[tuple[str, str], ...]:
+    parts: list[tuple[str, str]] = []
+    for inp in form.find_all(["input", "textarea", "select"]):
+        if inp.name == "input":
+            itype = inp.get("type", "text").lower()
+            if itype in ("hidden", "submit", "button", "image", "reset"):
+                continue
+        else:
+            itype = inp.name
+        parts.append((itype, (inp.get("name") or "").lower()))
+    return tuple(sorted(parts))
+
+
 def forms_missing_pdn_consent(html: str) -> list[str]:
     soup = BeautifulSoup(html, "html.parser")
-    problematic: list[str] = []
+    by_signature: dict[tuple[tuple[str, str], ...], list[Tag]] = defaultdict(list)
+
     for form in soup.find_all("form"):
         inputs = form.find_all("input")
         has_submit = any(
@@ -269,7 +285,14 @@ def forms_missing_pdn_consent(html: str) -> list[str]:
             continue
         if not form_likely_collects_personal_data(form):
             continue
-        if not _form_has_consent_checkbox(form):
-            action = form.get("action") or "(текущая страница)"
+        by_signature[_form_field_signature(form)].append(form)
+
+    problematic: list[str] = []
+    for forms in by_signature.values():
+        if any(_form_has_consent_checkbox(f) for f in forms):
+            continue
+        representative = forms[0]
+        action = representative.get("action") or "(текущая страница)"
+        if action not in problematic:
             problematic.append(action)
     return problematic
