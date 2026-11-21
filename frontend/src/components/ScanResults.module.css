@@ -87,15 +87,15 @@
 }
 
 .total_red .totalAmount {
-  color: color-mix(in srgb, var(--text) 88%, var(--danger));
+  color: color-mix(in srgb, var(--text) 62%, var(--danger));
 }
 
 .total_yellow .totalAmount {
-  color: color-mix(in srgb, var(--text) 90%, var(--warn));
+  color: color-mix(in srgb, var(--text) 68%, var(--warn));
 }
 
 .total_green .totalAmount {
-  color: color-mix(in srgb, var(--text) 92%, var(--ok));
+  color: color-mix(in srgb, var(--text) 72%, var(--ok));
 }
 
 .totalLabel {
@@ -129,7 +129,7 @@
 }
 
 .summaryCritical {
-  color: color-mix(in srgb, var(--text) 78%, var(--danger));
+  color: color-mix(in srgb, var(--text) 55%, var(--danger));
   font-weight: 600;
 }
 
@@ -144,7 +144,7 @@
 .item {
   padding: 1rem 1rem 1rem 1.05rem;
   border-bottom: 1px solid var(--border);
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   background: var(--surface);
 }
 
@@ -153,15 +153,18 @@
 }
 
 .itemRed {
-  border-left-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  border-left-color: color-mix(in srgb, var(--danger) 58%, var(--border));
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface));
 }
 
 .itemYellow {
-  border-left-color: color-mix(in srgb, var(--warn) 38%, var(--border));
+  border-left-color: color-mix(in srgb, var(--warn) 56%, var(--border));
+  background: color-mix(in srgb, var(--warn) 5%, var(--surface));
 }
 
 .itemGreen {
-  border-left-color: color-mix(in srgb, var(--ok) 35%, var(--border));
+  border-left-color: color-mix(in srgb, var(--ok) 52%, var(--border));
+  background: color-mix(in srgb, var(--ok) 4%, var(--surface));
 }
 
 .itemHead {
@@ -191,18 +194,21 @@
 }
 
 .riskPillRed {
-  color: color-mix(in srgb, var(--text-secondary) 55%, var(--danger));
-  border-color: color-mix(in srgb, var(--danger) 20%, var(--border));
+  color: color-mix(in srgb, var(--text) 40%, var(--danger));
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
 }
 
 .riskPillYellow {
-  color: color-mix(in srgb, var(--text-secondary) 55%, var(--warn));
-  border-color: color-mix(in srgb, var(--warn) 20%, var(--border));
+  color: color-mix(in srgb, var(--text) 42%, var(--warn));
+  border-color: color-mix(in srgb, var(--warn) 36%, var(--border));
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
 
 .riskPillGreen {
-  color: color-mix(in srgb, var(--text-secondary) 55%, var(--ok));
-  border-color: color-mix(in srgb, var(--ok) 18%, var(--border));
+  color: color-mix(in srgb, var(--text) 45%, var(--ok));
+  border-color: color-mix(in srgb, var(--ok) 34%, var(--border));
+  background: color-mix(in srgb, var(--ok) 8%, transparent);
 }
 
 .itemTitle {
@@ -227,13 +233,13 @@
 }
 
 .penalty_red {
-  color: color-mix(in srgb, var(--text) 82%, var(--danger));
+  color: color-mix(in srgb, var(--text) 48%, var(--danger));
 }
 
 .penalty_yellow {
-  color: color-mix(in srgb, var(--text) 85%, var(--warn));
+  color: color-mix(in srgb, var(--text) 52%, var(--warn));
 }
 
 .penalty_green {
-  color: color-mix(in srgb, var(--text) 88%, var(--ok));
+  color: color-mix(in srgb, var(--text) 58%, var(--ok));
 }
