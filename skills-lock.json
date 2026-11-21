@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "skills": {
+    "brief-to-tasks": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "brief-to-tasks/SKILL.md",
+      "computedHash": "3a1ea750ba8c01b6f7bcb24a245a42f0820b5cdd4c7b7c2602a834ba22185b75"
+    },
+    "design-brief": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "design-brief/SKILL.md",
+      "computedHash": "9fcdef7f531ecc8c2a04d2f0a3d5297507a079f5ecae666856ffb9369f5c8224"
+    },
+    "design-flow": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "design-flow/SKILL.md",
+      "computedHash": "d08438b1e9bb80f454064784193fda932c0b56d1ddeebbbd83ff582865081726"
+    },
+    "design-review": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "design-review/SKILL.md",
+      "computedHash": "7c8f219e33b9747f0d3878d478f223ca096c7e068c7447fe25a0859adda5b6f0"
+    },
+    "design-tokens": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "design-tokens/SKILL.md",
+      "computedHash": "2ed4192ea7e273c57f80da63db0925ac4d1f4ce8c0ddec3f1ec1d199db080234"
+    },
+    "frontend-design": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "frontend-design/SKILL.md",
+      "computedHash": "ecfca8c8fdf192ab13dbc73f324b63dd5b3611eca581755de320dcbc907b0298"
+    },
+    "grill-me": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "grill-me/SKILL.md",
+      "computedHash": "70b3ce139b9a23ca6a4425bbc78c25d82c43d75acf731e068f7ba3d8f230c5ca"
+    },
+    "information-architecture": {
+      "source": "julianoczkowski/designer-skills",
+      "commit": "c259656c76d9758d7ead46b0d2f125cbe84f8665",
+      "sourceType": "github",
+      "skillPath": "information-architecture/SKILL.md",
+      "computedHash": "a4226c09c007986fdb7b764ad383fc282e490277be9f0188f8e4b2cc94805e99"
+    }
+  }
+}

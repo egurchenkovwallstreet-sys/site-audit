@@ -1,0 +1,40 @@
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = BACKEND_ROOT.parent
+_env_file = PROJECT_ROOT / ".env"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=_env_file if _env_file.is_file() else None,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    app_env: str = "development"
+    database_url: str = (
+        "postgresql+asyncpg://site_audit:change_me@localhost:5432/site_audit"
+    )
+    cors_origins: str = "http://localhost:3000"
+
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def database_url_sync(self) -> str:
+        """URL для Alembic (синхронный драйвер psycopg)."""
+        url = self.database_url
+        if url.startswith("postgresql+asyncpg://"):
+            return "postgresql+psycopg://" + url.removeprefix("postgresql+asyncpg://")
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+        return url
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
