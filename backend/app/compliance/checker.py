@@ -15,6 +15,7 @@ from app.compliance.privacy_detection import (
     collect_privacy_candidate_urls,
     privacy_urls_from_robots,
 )
+from app.compliance.spa_bundle_scan import spa_bundle_has_consent, spa_bundle_has_privacy
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
@@ -85,6 +86,9 @@ async def _locate_privacy_policy(page_url: str, html: str) -> tuple[bool, str | 
         if _main_page_has_privacy_signal(fetched.html):
             return True, candidate
 
+    if await spa_bundle_has_privacy(page_url, html):
+        return True, urljoin(page_url, "/privacy")
+
     return False, None
 
 
@@ -139,7 +143,9 @@ def _detect_foreign_sdks(html: str) -> list[str]:
     return found
 
 
-def run_compliance_checks(html: str, *, privacy_found: bool) -> list[RawFinding]:
+def run_compliance_checks(
+    html: str, *, privacy_found: bool, consent_markers_found: bool
+) -> list[RawFinding]:
     findings: list[RawFinding] = []
 
     if not privacy_found:
@@ -157,7 +163,7 @@ def run_compliance_checks(html: str, *, privacy_found: bool) -> list[RawFinding]
             )
         )
 
-    if not _has_cookie_banner(html):
+    if not consent_markers_found and not _has_cookie_banner(html):
         findings.append(
             RawFinding(
                 penalty_code="no_cookie_banner",
@@ -236,7 +242,13 @@ async def check_url_compliance(url: str) -> list[dict]:
 
     html = fetch.html or ""
     privacy_found, _privacy_source = await _locate_privacy_policy(normalized, html)
+    consent_in_spa = await spa_bundle_has_consent(normalized, html)
     findings.extend(
-        enrich_finding(f) for f in run_compliance_checks(html, privacy_found=privacy_found)
+        enrich_finding(f)
+        for f in run_compliance_checks(
+            html,
+            privacy_found=privacy_found,
+            consent_markers_found=consent_in_spa,
+        )
     )
     return findings

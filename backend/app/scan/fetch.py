@@ -6,6 +6,7 @@ import httpx
 
 FETCH_TIMEOUT = 30.0
 MAX_BODY_BYTES = 2_000_000
+MAX_SCRIPT_BYTES = 3_500_000
 
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -84,3 +85,38 @@ async def fetch_target_page(url: str) -> PageFetchResult:
         ssl_verify_fallback=ssl_verify_fallback,
         fetch_error=fetch_error,
     )
+
+
+async def fetch_resource_text(url: str, *, max_bytes: int = MAX_BODY_BYTES) -> str | None:
+    """Загрузка текста (в т.ч. JS-бандла); при превышении лимита — первые max_bytes."""
+    headers = {**DEFAULT_HEADERS, "Accept": "*/*"}
+
+    async def _get(verify: bool) -> httpx.Response:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=FETCH_TIMEOUT,
+            headers=headers,
+            verify=verify,
+        ) as client:
+            return await client.get(url)
+
+    response: httpx.Response | None = None
+    try:
+        response = await _get(verify=True)
+    except httpx.HTTPError as exc:
+        err = str(exc).lower()
+        if isinstance(exc, httpx.ConnectError) or "certificate" in err or "ssl" in err:
+            try:
+                response = await _get(verify=False)
+            except httpx.HTTPError:
+                return None
+        else:
+            return None
+
+    if response is None or response.status_code >= 400:
+        return None
+    data = response.content[:max_bytes]
+    try:
+        return data.decode(response.encoding or "utf-8", errors="replace")
+    except LookupError:
+        return data.decode("utf-8", errors="replace")

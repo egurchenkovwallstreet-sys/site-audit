@@ -19,6 +19,7 @@ PRIVACY_LINK_HINTS = (
     "konfid",
     "конфид",
     "персональн",
+    "пдн",
     "обработк",
     "152",
     "legal/priv",
@@ -41,14 +42,18 @@ PRIVACY_TEXT_PHRASES = (
     "privacy policy",
     "personal data",
     "обработка персональных данных",
+    "политика пдн",
+    "согласие на обработку",
 )
 
 # Типовые пути на российских и международных сайтах
 COMMON_PRIVACY_PATHS = (
+    "/privacy",
+    "/offer",
+    "/public-offer",
     "/legal-documents/politika_konfidencialnosti_0/",
     "/legal-documents/politika_konfidencialnosti_0",
     "/legal-documents/",
-    "/privacy",
     "/privacy-policy",
     "/privacy_policy",
     "/politika-konfidencialnosti",
