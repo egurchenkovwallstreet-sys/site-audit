@@ -3,26 +3,58 @@ from __future__ import annotations
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
-PDN_INPUT_TYPES = frozenset({"email", "tel", "number"})
-PDN_NAME_HINTS = (
+PDN_INPUT_TYPES = frozenset({"email", "tel"})
+
+PDN_FIELD_NAMES = frozenset(
+    {
+        "email",
+        "e-mail",
+        "e_mail",
+        "mail",
+        "phone",
+        "tel",
+        "mobile",
+        "phonenumber",
+        "phone_number",
+        "fio",
+        "fullname",
+        "full_name",
+        "firstname",
+        "first_name",
+        "lastname",
+        "last_name",
+        "surname",
+        "customer_name",
+        "your_name",
+    }
+)
+
+LOGIN_FIELD_NAMES = frozenset(
+    {
+        "username",
+        "user",
+        "login",
+        "password",
+        "pass",
+        "pwd",
+        "q",
+        "query",
+        "search",
+        "s",
+        "keywords",
+    }
+)
+
+PDN_NAME_SUBSTRINGS = (
     "email",
-    "e-mail",
-    "mail",
     "phone",
-    "tel",
-    "mobile",
-    "fio",
-    "name",
-    "surname",
-    "lastname",
-    "firstname",
-    "имя",
-    "фамил",
-    "отчеств",
     "телефон",
     "почт",
-    "e_mail",
+    "фамил",
+    "отчеств",
+    "персональн",
     "phonenumber",
+    "birthday",
     "birth",
     "адрес",
     "address",
@@ -80,7 +112,9 @@ def _visible_inputs(form: Tag) -> list[Tag]:
 
 def _form_is_search_only(form: Tag) -> bool:
     blob = _form_context_blob(form)
-    if "search" in blob or "/search" in blob:
+    if form.get("role", "").lower() == "search":
+        return True
+    if "search" in blob or "/search" in blob or "поиск" in blob:
         return True
     if form.find("input", {"type": "search"}):
         return True
@@ -135,11 +169,21 @@ def _input_suggests_pdn(inp: Tag) -> bool:
     itype = inp.get("type", "text").lower()
     if itype in PDN_INPUT_TYPES:
         return True
+    field_name = (inp.get("name") or "").lower()
+    if field_name in LOGIN_FIELD_NAMES:
+        return False
+    if field_name in PDN_FIELD_NAMES:
+        return True
+    autocomplete = (inp.get("autocomplete") or "").lower()
+    if autocomplete in {"email", "tel", "name", "given-name", "family-name"}:
+        return autocomplete != "username"
     blob = " ".join(
         str(inp.get(attr, "") or "")
-        for attr in ("name", "id", "placeholder", "autocomplete", "aria-label")
+        for attr in ("id", "placeholder", "aria-label")
     ).lower()
-    return any(h in blob for h in PDN_NAME_HINTS)
+    if "имя" in blob and "фамил" in blob:
+        return True
+    return any(h in blob for h in PDN_NAME_SUBSTRINGS)
 
 
 def form_likely_collects_personal_data(form: Tag) -> bool:
@@ -153,8 +197,13 @@ def form_likely_collects_personal_data(form: Tag) -> bool:
                 continue
         if _input_suggests_pdn(inp):
             return True
-        if inp.name == "textarea" and (inp.get("name") or inp.get("placeholder")):
-            return True
+        if inp.name == "textarea":
+            blob = " ".join(
+                str(inp.get(attr, "") or "")
+                for attr in ("name", "id", "placeholder", "aria-label")
+            ).lower()
+            if any(h in blob for h in PDN_NAME_SUBSTRINGS) or "имя" in blob:
+                return True
     return False
 
 
