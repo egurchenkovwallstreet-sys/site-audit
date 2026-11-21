@@ -136,15 +136,6 @@ export function ScanResults({
                 </p>
               </div>
             ) : null}
-            <div className={styles.legend} aria-label="Шкала рисков">
-              <span className={styles.legendTitle}>Шкала по ТЗ:</span>
-              <span className={`${styles.legendDot} ${styles.dotGreen}`} />
-              до 10 000 ₽
-              <span className={`${styles.legendDot} ${styles.dotYellow}`} />
-              до 100 000 ₽
-              <span className={`${styles.legendDot} ${styles.dotRed}`} />
-              свыше 100 000 ₽ и критичные уязвимости
-            </div>
             {riskSummary.red > 0 || riskSummary.yellow > 0 ? (
               <p className={styles.summary}>
                 {riskSummary.red > 0 ? (
