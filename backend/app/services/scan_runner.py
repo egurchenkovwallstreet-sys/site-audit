@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import check_url_compliance
+from app.scan.technical_checker import check_url_technical
 from app.models.entities import Finding, Scan, ScanStatus
 
 
@@ -14,6 +15,7 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
 
     try:
         rows = await check_url_compliance(scan.target_url)
+        rows.extend(await check_url_technical(scan.target_url))
         for row in rows:
             session.add(
                 Finding(

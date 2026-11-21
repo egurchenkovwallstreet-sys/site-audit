@@ -7,6 +7,7 @@ type Scan = { id: number; target_url: string; status: string };
 
 type Finding = {
   id: number;
+  type: string;
   title: string;
   description: string;
   legal_article: string | null;
@@ -15,7 +16,7 @@ type Finding = {
 
 const STATUS_TEXT: Record<string, string> = {
   pending: "Готовим проверку…",
-  running: "Проверяем 152-ФЗ…",
+  running: "Сканируем безопасность и 152-ФЗ…",
   completed: "Готово",
   failed: "Не удалось завершить проверку",
 };
@@ -81,6 +82,9 @@ export function ScanResults({
           <ul className={styles.list}>
             {findings.map((f) => (
               <li key={f.id} className={styles.item}>
+                <p className={styles.badge}>
+                  {f.type === "security" ? "Безопасность" : "152-ФЗ"}
+                </p>
                 <p className={styles.itemTitle}>{f.title}</p>
                 <p className={styles.itemMeta}>{f.description}</p>
                 {f.legal_article ? (

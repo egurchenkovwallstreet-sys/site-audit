@@ -80,6 +80,12 @@
   border-bottom: none;
 }
 
+.badge {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
 .itemTitle {
   font-weight: 600;
   margin-bottom: 0.35rem;
