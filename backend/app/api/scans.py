@@ -25,6 +25,10 @@ class ScanContext(BaseModel):
     privacy_source: str | None = None
     consent_found: bool | None = None
     consent_source: str | None = None
+    requested_url: str | None = None
+    scanned_url: str | None = None
+    used_fallback: bool | None = None
+    tried_urls: list[str] | None = None
 
 
 class ScanResponse(BaseModel):

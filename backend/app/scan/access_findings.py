@@ -3,13 +3,26 @@ from __future__ import annotations
 from app.scan.fetch import PageFetchResult
 
 
-def blocked_scan_finding(kind: str, fetch: PageFetchResult) -> dict:
+def blocked_scan_finding(
+    kind: str,
+    fetch: PageFetchResult,
+    *,
+    tried_urls: list[str] | None = None,
+) -> dict:
     """Finding when the site could not be fetched for HTML-based checks."""
+    extra_tried = ""
+    if tried_urls and len(tried_urls) > 1:
+        extra_tried = (
+            " Пробовали альтернативные страницы (в т.ч. /contacts/): "
+            + ", ".join(tried_urls[1:6])
+            + "."
+        )
+
     if fetch.fetch_error and fetch.status_code is None:
         title = "Не удалось подключиться к сайту"
         description = (
-            f"При загрузке главной страницы произошла ошибка: {fetch.fetch_error}. "
-            "Проверка по HTML не выполнена."
+            f"При загрузке страницы произошла ошибка: {fetch.fetch_error}. "
+            f"Проверка по HTML не выполнена.{extra_tried}"
         )
         severity = "high"
     elif fetch.access_blocked:
@@ -17,8 +30,9 @@ def blocked_scan_finding(kind: str, fetch: PageFetchResult) -> dict:
         description = (
             f"Сервер ответил кодом HTTP {fetch.status_code}. "
             "Так бывает у крупных площадок с антибот-защитой (например, Avito). "
-            "Проверка 152-ФЗ по содержимому главной страницы не выполнена; "
+            "Проверка 152-ФЗ по содержимому не выполнена; "
             "ниже — только то, что удалось снять с ответа сервера."
+            f"{extra_tried}"
         )
         severity = "medium"
     else:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.compliance.checker import validate_target_url
 from app.data.security_breach_risks import apply_breach_penalty
 from app.scan.access_findings import blocked_scan_finding, ssl_chain_finding
-from app.scan.fetch import fetch_target_page
+from app.scan.page_fetch import fetch_for_scan
 
 SECURITY_HEADERS = (
     ("strict-transport-security", "HSTS", "high", "missing_hsts"),
@@ -56,15 +56,18 @@ async def check_url_technical(url: str) -> list[dict]:
             )
         )
 
-    fetch = await fetch_target_page(target)
+    scan = await fetch_for_scan(target)
+    fetch = scan.result
 
     if fetch.ssl_verify_fallback:
         findings.append(
             apply_breach_penalty(ssl_chain_finding(), "ssl_chain_invalid")
         )
 
-    if fetch.fetch_error and fetch.status_code is None:
-        findings.append(blocked_scan_finding("security", fetch))
+    if not scan.html_available and fetch.fetch_error and fetch.status_code is None:
+        findings.append(
+            blocked_scan_finding("security", fetch, tried_urls=scan.tried_urls)
+        )
         return findings
 
     if fetch.status_code is not None and fetch.status_code >= 400:

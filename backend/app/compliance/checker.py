@@ -25,6 +25,7 @@ from app.compliance.tracking_scripts import (
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
+from app.scan.page_fetch import fetch_for_scan
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
 
@@ -220,33 +221,66 @@ def compliance_context_dict(
     privacy_source: str | None,
     consent_found: bool,
     consent_source: str | None,
+    requested_url: str | None = None,
+    scanned_url: str | None = None,
+    used_fallback: bool = False,
+    tried_urls: list[str] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "scope": CHECK_SCOPE_NOTE,
+    scope = CHECK_SCOPE_NOTE
+    if used_fallback and scanned_url and requested_url:
+        scope = (
+            f"Запрошен адрес {requested_url}. Из‑за антибота на главной "
+            f"проверена открытая страница {scanned_url} "
+            f"(автоматический переход на /contacts/ и аналоги). "
+            "Дополнительно: типовые ссылки на политику, robots.txt, sitemap.xml."
+        )
+    ctx: dict[str, Any] = {
+        "scope": scope,
         "privacy_found": privacy_found,
         "privacy_source": privacy_source,
         "consent_found": consent_found,
         "consent_source": consent_source,
     }
+    if requested_url:
+        ctx["requested_url"] = requested_url
+    if scanned_url:
+        ctx["scanned_url"] = scanned_url
+    if used_fallback:
+        ctx["used_fallback"] = True
+    if tried_urls:
+        ctx["tried_urls"] = tried_urls
+    return ctx
 
 
 async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
     normalized = validate_target_url(url)
-    fetch = await fetch_target_page(normalized)
-    empty_ctx = compliance_context_dict(
-        privacy_found=False,
-        privacy_source=None,
-        consent_found=False,
-        consent_source=None,
-    )
+    scan = await fetch_for_scan(normalized)
+    fetch = scan.result
+    page_url = scan.fetched_url
 
-    if not fetch.html_available:
-        return [blocked_scan_finding("compliance", fetch)], empty_ctx
+    def _empty_ctx() -> dict[str, Any]:
+        return compliance_context_dict(
+            privacy_found=False,
+            privacy_source=None,
+            consent_found=False,
+            consent_source=None,
+            requested_url=normalized,
+            scanned_url=page_url,
+            used_fallback=scan.used_fallback,
+            tried_urls=scan.tried_urls,
+        )
 
-    html = fetch.html or ""
-    spa = await analyze_spa_bundles(normalized, html)
+    if not scan.html_available:
+        return [
+            blocked_scan_finding(
+                "compliance", fetch, tried_urls=scan.tried_urls
+            )
+        ], _empty_ctx()
+
+    html = scan.html or ""
+    spa = await analyze_spa_bundles(page_url, html)
     privacy_found, privacy_source = await _locate_privacy_policy(
-        normalized, html, spa=spa
+        page_url, html, spa=spa
     )
 
     consent_in_html = _has_cookie_banner(html)
@@ -274,5 +308,9 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         privacy_source=privacy_source,
         consent_found=consent_found,
         consent_source=consent_source,
+        requested_url=normalized,
+        scanned_url=page_url,
+        used_fallback=scan.used_fallback,
+        tried_urls=scan.tried_urls,
     )
     return findings, ctx

@@ -18,6 +18,10 @@ type ScanContext = {
   privacy_source?: string | null;
   consent_found?: boolean;
   consent_source?: string | null;
+  requested_url?: string;
+  scanned_url?: string;
+  used_fallback?: boolean;
+  tried_urls?: string[];
 };
 
 type Scan = {
@@ -113,6 +117,11 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
   return (
     <div className={styles.contextBlock}>
       <p className={styles.contextTitle}>Что проверили</p>
+      {context.used_fallback && context.scanned_url ? (
+        <p className={styles.contextMeta}>
+          Проверена страница: {context.scanned_url} (главная закрыта антиботом).
+        </p>
+      ) : null}
       {context.scope ? (
         <p className={styles.contextMeta}>{context.scope}</p>
       ) : null}
