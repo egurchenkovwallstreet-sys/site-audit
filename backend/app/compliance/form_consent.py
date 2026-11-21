@@ -258,16 +258,19 @@ def _form_has_consent_checkbox(form: Tag) -> bool:
     return False
 
 
-def _form_field_signature(form: Tag) -> tuple[tuple[str, str], ...]:
+def _pdn_field_signature(form: Tag) -> tuple[tuple[str, str], ...]:
+    """Группируем заявки по полям ПДн (имя/телефон), а не по всей разметке."""
     parts: list[tuple[str, str]] = []
     for inp in form.find_all(["input", "textarea", "select"]):
         if inp.name == "input":
             itype = inp.get("type", "text").lower()
-            if itype in ("hidden", "submit", "button", "image", "reset"):
+            if itype in ("hidden", "submit", "button", "image", "reset", "file"):
                 continue
         else:
             itype = inp.name
-        parts.append((itype, (inp.get("name") or "").lower()))
+        name = (inp.get("name") or "").lower()
+        if _input_suggests_pdn(inp) or name in ("name", "phone"):
+            parts.append((name or itype, itype))
     return tuple(sorted(parts))
 
 
@@ -285,7 +288,10 @@ def forms_missing_pdn_consent(html: str) -> list[str]:
             continue
         if not form_likely_collects_personal_data(form):
             continue
-        by_signature[_form_field_signature(form)].append(form)
+        sig = _pdn_field_signature(form)
+        if not sig:
+            continue
+        by_signature[sig].append(form)
 
     problematic: list[str] = []
     for forms in by_signature.values():
