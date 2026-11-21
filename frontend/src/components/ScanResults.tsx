@@ -116,6 +116,7 @@ function FindingItems({ items }: { items: Finding[] }) {
 }
 
 function CheckContextPanel({ context }: { context: ScanContext }) {
+  const complianceRan = (context.pages_checked ?? 0) > 0;
   return (
     <div className={styles.contextBlock}>
       <p className={styles.contextTitle}>Что проверили</p>
@@ -146,7 +147,11 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
       <ul className={styles.contextList}>
         <li>
           Политика ПДн:{" "}
-          {context.privacy_found ? (
+          {!complianceRan ? (
+            <span className={styles.contextWarn}>
+              не проверяли (HTML сайта не прочитан)
+            </span>
+          ) : context.privacy_found ? (
             <span className={styles.contextOk}>найдена</span>
           ) : (
             <span className={styles.contextWarn}>не обнаружена</span>
@@ -157,7 +162,11 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
         </li>
         <li>
           Согласие / cookie:{" "}
-          {context.consent_found ? (
+          {!complianceRan ? (
+            <span className={styles.contextWarn}>
+              не проверяли (HTML сайта не прочитан)
+            </span>
+          ) : context.consent_found ? (
             <span className={styles.contextOk}>признаки есть</span>
           ) : (
             <span className={styles.contextWarn}>признаков нет</span>
@@ -254,8 +263,10 @@ export function ScanResults({
     };
   }, [findings]);
 
+  const complianceRan = (scan?.context?.pages_checked ?? 0) > 0;
   const complianceClean =
     scan?.status === "completed" &&
+    complianceRan &&
     complianceFindings.length === 0 &&
     accessFindings.length === 0;
   const noFindingsAtAll = findings.filter((f) => f.type !== "access").length === 0;
@@ -299,9 +310,7 @@ export function ScanResults({
           <p className={styles.itemMeta}>{accessFindings[0].description}</p>
         </div>
       ) : null}
-      {scan?.status === "completed" &&
-      scan.context &&
-      (scan.context.pages_checked ?? 0) > 0 ? (
+      {scan?.status === "completed" && scan.context ? (
         <CheckContextPanel context={scan.context} />
       ) : null}
       {complianceClean ? (
@@ -359,7 +368,9 @@ export function ScanResults({
                 <FindingItems items={complianceFindings} />
               ) : (
                 <p className={styles.sectionEmpty}>
-                  По комплаенсу замечаний со штрафом не найдено.
+                  {complianceRan
+                    ? "По комплаенсу замечаний со штрафом не найдено."
+                    : "Проверка 152-ФЗ по содержимому страниц не выполнялась (см. блок доступа выше). Штраф за отсутствие политики без анализа HTML не выставляется."}
                 </p>
               )}
             </section>

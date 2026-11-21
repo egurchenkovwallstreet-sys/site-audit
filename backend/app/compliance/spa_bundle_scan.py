@@ -73,8 +73,17 @@ def _text_has_marker(text: str, markers: tuple[str, ...]) -> bool:
 
 
 def _body_has_privacy(body: str) -> bool:
-    return _text_has_marker(body, SPA_PRIVACY_MARKERS) or bool(
-        _PRIVACY_ROUTE.search(body)
+    if _PRIVACY_ROUTE.search(body):
+        return True
+    lower = body.lower()
+    if "privacy_policy" in lower or "politika_konfid" in lower:
+        return True
+    if "legal-documents" in lower and "konfid" in lower:
+        return True
+    return (
+        "политик" in lower
+        and ("конфиденциальн" in lower or "персональн" in lower)
+        and len(body) > 800
     )
 
 

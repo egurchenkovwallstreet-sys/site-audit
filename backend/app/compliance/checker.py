@@ -70,14 +70,14 @@ async def _locate_privacy_policy(
     spa: SpaBundleScan,
     extra_pages: list[tuple[str, str]] | None = None,
 ) -> tuple[bool, str | None]:
-    for url, body in [(page_url, html), *(extra_pages or [])]:
-        if _main_page_has_privacy_signal(body):
-            return True, f"Ссылка или текст на странице: {url}"
-        if _raw_html_mentions_privacy_url(url, body):
-            return True, f"Упоминание политики на странице: {url}"
+    pages = [(page_url, html), *(extra_pages or [])]
 
-    candidates = collect_privacy_candidate_urls(page_url, html)
-    for url, body in extra_pages or []:
+    for url, body in pages:
+        if _page_content_is_privacy_policy(body):
+            return True, f"Документ на странице: {url}"
+
+    candidates: list[str] = []
+    for url, body in pages:
         candidates = _merge_candidates(
             candidates, collect_privacy_candidate_urls(url, body)
         )
@@ -97,18 +97,15 @@ async def _locate_privacy_policy(
         fetched = await fetch_target_page(candidate)
         if not fetched.html:
             continue
-        if _raw_html_mentions_privacy_url(candidate, fetched.html):
-            return True, f"Отдельная страница: {candidate}"
-        if not fetched.html_available:
-            continue
         if _page_content_is_privacy_policy(fetched.html):
             return True, f"Документ на странице: {candidate}"
-        if _main_page_has_privacy_signal(fetched.html):
-            return True, f"Ссылка на странице: {candidate}"
+        if _raw_html_mentions_privacy_url(candidate, fetched.html):
+            if _main_page_has_privacy_signal(fetched.html):
+                return True, f"Страница политики: {candidate}"
 
     if spa.privacy_found:
         label = spa.privacy_script_url or "JavaScript-приложение"
-        return True, f"Код приложения (SPA): {label}"
+        return True, f"Маршрут или текст в SPA: {label}"
 
     return False, None
 
@@ -241,9 +238,9 @@ def enrich_finding(raw: RawFinding) -> dict:
 
 def compliance_context_dict(
     *,
-    privacy_found: bool,
+    privacy_found: bool | None,
     privacy_source: str | None,
-    consent_found: bool,
+    consent_found: bool | None,
     consent_source: str | None,
     requested_url: str | None = None,
     scanned_url: str | None = None,
@@ -290,10 +287,10 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
     page_pairs = bundle.page_pairs
 
     def _empty_ctx() -> dict[str, Any]:
-        return compliance_context_dict(
-            privacy_found=False,
+        ctx = compliance_context_dict(
+            privacy_found=None,
             privacy_source=None,
-            consent_found=False,
+            consent_found=None,
             consent_source=None,
             requested_url=normalized,
             scanned_url=page_url,
@@ -302,6 +299,11 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
             scanned_urls=[],
             pages_checked=0,
         )
+        ctx["scope"] = (
+            CHECK_SCOPE_NOTE
+            + " Содержимое страниц не прочитано — поиск политики и форм не выполнялся."
+        )
+        return ctx
 
     if not bundle.html_available:
         return [

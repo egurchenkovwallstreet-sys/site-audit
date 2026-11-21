@@ -5,23 +5,19 @@ from urllib.parse import unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-# Ссылки и пути, характерные для политики ПДн
-PRIVACY_LINK_HINTS = (
+# Путь/URL — только устойчивые фрагменты (без «152», «пдн», «обработк» в одиночку).
+PRIVACY_HREF_MARKERS = (
     "privacy",
     "confidential",
     "personal-data",
     "personal_data",
     "personaldata",
-    "pdn",
     "pd-policy",
     "data-protection",
     "politika",
     "konfid",
     "конфид",
-    "персональн",
-    "пдн",
-    "обработк",
-    "152",
+    "pdn",
     "legal/priv",
     "policy-privacy",
     "privacy-policy",
@@ -34,19 +30,34 @@ PRIVACY_LINK_HINTS = (
     "konfidencialnosti",
 )
 
+PRIVACY_LINK_LABEL_MARKERS = (
+    "политика конфиденциальности",
+    "политика в отношении обработки",
+    "политика обработки персональных",
+    "обработк персональн",
+    "privacy policy",
+    "personal data policy",
+)
+
 PRIVACY_TEXT_PHRASES = (
     "политика конфиденциальности",
     "политика в отношении обработки персональных",
     "политика обработки персональных",
-    "персональные данные",
     "privacy policy",
-    "personal data",
     "обработка персональных данных",
-    "политика пдн",
-    "согласие на обработку",
 )
 
-# Типовые пути на российских и международных сайтах
+POLICY_LEGAL_WORDS = (
+    "оператор",
+    "субъект персональных",
+    "субъект пдн",
+    "цели обработки",
+    "согласие субъекта",
+    "роскомнадзор",
+    "ркн",
+    "права субъекта",
+)
+
 COMMON_PRIVACY_PATHS = (
     "/privacy",
     "/offer",
@@ -75,7 +86,7 @@ COMMON_PRIVACY_PATHS = (
 )
 
 _HREF_IN_HTML = re.compile(
-    r'href\s*=\s*["\']([^"\']*(?:privacy|konfid|конфид|personal|pdn|152|politika|legal-documents)[^"\']*)["\']',
+    r'href\s*=\s*["\']([^"\']*(?:privacy|konfid|конфид|personal|pdn|politika|legal-documents)[^"\']*)["\']',
     re.IGNORECASE,
 )
 
@@ -93,24 +104,38 @@ def _same_origin(base: str, target: str) -> bool:
     return b.scheme == t.scheme and b.netloc.lower() == t.netloc.lower()
 
 
+def _href_suggests_privacy(href: str) -> bool:
+    if not href or href.strip() in ("#", "/", ""):
+        return False
+    blob = unquote(href).lower()
+    return any(h in blob for h in PRIVACY_HREF_MARKERS)
+
+
 def _link_suggests_privacy(href: str, label: str) -> bool:
-    blob = f"{href} {label}".lower()
-    return any(h in blob for h in PRIVACY_LINK_HINTS)
+    """Совместимость: ссылка на документ, не маркетинговый текст."""
+    if _href_suggests_privacy(href):
+        return True
+    label_l = label.lower()
+    return any(m in label_l for m in PRIVACY_LINK_LABEL_MARKERS) and bool(href.strip())
+
+
+def _anchor_points_to_policy(page_url: str, href: str, label: str) -> str | None:
+    if not _link_suggests_privacy(href, label):
+        return None
+    full = urljoin(page_url, href.strip())
+    if not full.startswith(("http://", "https://")):
+        return None
+    if not _same_origin(page_url, full):
+        return None
+    return full.split("#")[0].rstrip("/")
 
 
 def _raw_html_mentions_privacy_url(page_url: str, html: str) -> bool:
-    """Упоминание URL политики в сыром HTML (SPA, JSON, back_location антибота)."""
+    """Явный URL политики в разметке (SPA, JSON), не разговор о 152-ФЗ."""
     blob = unquote(html).lower()
     if _RAW_PRIVACY_IN_SOURCE.search(blob):
         return True
-    if "legal-documents" in blob and "konfid" in blob:
-        return True
-    if "политик" in blob and "конфиденциальн" in blob:
-        return True
-    parsed = urlparse(page_url)
-    if parsed.path and _link_suggests_privacy(parsed.path, ""):
-        return _page_content_is_privacy_policy(html) or _main_page_has_privacy_signal(html)
-    return False
+    return "legal-documents" in blob and "konfid" in blob
 
 
 def _privacy_urls_in_raw(page_url: str, html: str) -> list[str]:
@@ -142,7 +167,7 @@ def privacy_urls_from_sitemap(page_url: str, sitemap_xml: str) -> list[str]:
             candidate = urljoin(page_url, candidate)
         if not _same_origin(page_url, candidate):
             continue
-        if not _link_suggests_privacy(candidate, ""):
+        if not _href_suggests_privacy(candidate):
             continue
         key = candidate.split("#")[0].rstrip("/")
         if key not in seen:
@@ -164,7 +189,7 @@ def privacy_urls_from_robots(page_url: str, robots_txt: str) -> list[str]:
             candidate = part if part.startswith("http") else urljoin(page_url, part)
             if not _same_origin(page_url, candidate):
                 continue
-            if not _link_suggests_privacy(candidate, ""):
+            if not _href_suggests_privacy(candidate):
                 continue
             key = candidate.split("#")[0].rstrip("/")
             if key not in seen:
@@ -174,8 +199,12 @@ def privacy_urls_from_robots(page_url: str, robots_txt: str) -> list[str]:
 
 
 def _main_page_has_privacy_signal(html: str) -> bool:
+    """Есть ли явная ссылка на политику (не meta и не «слова про ПДн» на лендинге)."""
     soup = BeautifulSoup(html, "html.parser")
-    text_blob = soup.get_text(" ", strip=True).lower()
+    page_url = ""
+    base = soup.find("base", href=True)
+    if base:
+        page_url = base.get("href", "")
 
     for a in soup.find_all("a", href=True):
         href = a.get("href", "")
@@ -183,40 +212,47 @@ def _main_page_has_privacy_signal(html: str) -> bool:
         if _link_suggests_privacy(href, label):
             return True
 
-    for tag in soup.find_all(["link", "meta"]):
-        content = " ".join(
-            str(tag.get(attr, "")) for attr in ("href", "content", "title")
-        )
-        if _link_suggests_privacy(content, ""):
-            return True
-
     for match in _HREF_IN_HTML.finditer(html):
-        if _link_suggests_privacy(match.group(1), ""):
+        if _href_suggests_privacy(match.group(1)):
             return True
 
-    return any(p in text_blob for p in PRIVACY_TEXT_PHRASES)
+    return False
+
+
+def policy_link_targets(page_url: str, html: str) -> list[str]:
+    seen: set[str] = set()
+    urls: list[str] = []
+    soup = BeautifulSoup(html, "html.parser")
+    for a in soup.find_all("a", href=True):
+        href = a.get("href", "")
+        label = a.get_text(" ", strip=True)
+        target = _anchor_points_to_policy(page_url, href, label)
+        if target and target not in seen:
+            seen.add(target)
+            urls.append(target)
+    for match in _HREF_IN_HTML.finditer(html):
+        fragment = match.group(1)
+        if not _href_suggests_privacy(fragment):
+            continue
+        full = urljoin(page_url, fragment)
+        key = full.split("#")[0].rstrip("/")
+        if _same_origin(page_url, key) and key not in seen:
+            seen.add(key)
+            urls.append(key)
+    return urls
 
 
 def _page_content_is_privacy_policy(html: str) -> bool:
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True).lower()
-    if len(text) < 400:
+    if len(text) < 500:
         return False
     hits = sum(1 for p in PRIVACY_TEXT_PHRASES if p in text)
-    return hits >= 2 or (
-        hits >= 1
-        and any(
-            w in text
-            for w in (
-                "оператор",
-                "субъект",
-                "согласие",
-                "цели обработки",
-                "ркн",
-                "роскомнадзор",
-            )
-        )
-    )
+    if hits >= 2:
+        return True
+    if hits >= 1 and sum(1 for w in POLICY_LEGAL_WORDS if w in text) >= 2:
+        return True
+    return False
 
 
 def collect_privacy_candidate_urls(page_url: str, html: str) -> list[str]:
@@ -234,20 +270,13 @@ def collect_privacy_candidate_urls(page_url: str, html: str) -> list[str]:
             seen.add(key)
             ordered.append(key)
 
+    for target in policy_link_targets(page_url, html):
+        add(target)
+
     for path in COMMON_PRIVACY_PATHS:
         add(path)
 
     for extra in _privacy_urls_in_raw(page_url, html):
         add(extra)
-
-    soup = BeautifulSoup(html, "html.parser")
-    for a in soup.find_all("a", href=True):
-        href = a.get("href", "")
-        label = a.get_text(" ", strip=True)
-        if _link_suggests_privacy(href, label):
-            add(href)
-
-    for match in _HREF_IN_HTML.finditer(html):
-        add(match.group(1))
 
     return ordered
