@@ -49,3 +49,25 @@ def test_real_policy_link():
     assert _main_page_has_privacy_signal(PAGE_WITH_LINK)
     candidates = collect_privacy_candidate_urls("https://shop.ru/", PAGE_WITH_LINK)
     assert any("politika-konfidencialnosti" in u for u in candidates)
+
+
+ANTIBOT_CIAN = """
+<script>
+function get_location() {
+  return "https://www.cian.ru/xpvnsulc/?back_location=https%3a%2f%2fwww.cian.ru%2flegal-documents%2fpolitika_konfidencialnosti_0%2f";
+}
+</script>
+"""
+
+
+def test_antibot_back_location():
+    from app.compliance.privacy_detection import (
+        antibot_confirms_policy_url,
+        policy_urls_from_antibot_challenge,
+    )
+
+    urls = policy_urls_from_antibot_challenge(
+        ANTIBOT_CIAN, "https://www.cian.ru/legal-documents/politika_konfidencialnosti_0/"
+    )
+    assert urls
+    assert antibot_confirms_policy_url(urls[0], ANTIBOT_CIAN)

@@ -13,6 +13,7 @@ SITEMAP_LOC = re.compile(r"<loc>\s*([^<]+)\s*</loc>", re.IGNORECASE)
 SKIP_SUFFIXES = (
     ".pdf",
     ".zip",
+    ".gz",
     ".rar",
     ".jpg",
     ".jpeg",
@@ -26,6 +27,17 @@ SKIP_SUFFIXES = (
     ".mp4",
     ".woff",
     ".woff2",
+)
+
+# Типовые юридические разделы — всегда в плане обхода (до sitemap).
+LEGAL_SEED_PATHS = (
+    "/legal-documents/",
+    "/legal-documents/politika_konfidencialnosti_0/",
+    "/legal/",
+    "/privacy",
+    "/privacy-policy",
+    "/politika-konfidencialnosti",
+    "/about/privacy",
 )
 
 LINK_PRIORITY_HINTS = (
@@ -61,6 +73,16 @@ def _origin(url: str) -> str:
     return f"{p.scheme}://{p.netloc}"
 
 
+def _path_not_scannable(path: str) -> bool:
+    low = path.lower()
+    if any(low.endswith(s) for s in SKIP_SUFFIXES):
+        return True
+    name = low.rsplit("/", 1)[-1]
+    if name.startswith("sitemap") and (name.endswith(".xml") or ".xml." in name):
+        return True
+    return False
+
+
 def _normalize_page_url(base: str, href: str) -> str | None:
     href = href.strip()
     if not href or href.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
@@ -69,7 +91,7 @@ def _normalize_page_url(base: str, href: str) -> str | None:
     if not _same_origin(base, full):
         return None
     path = urlparse(full).path.lower()
-    if any(path.endswith(s) for s in SKIP_SUFFIXES):
+    if _path_not_scannable(path):
         return None
     return full.rstrip("/") or full
 
@@ -114,7 +136,7 @@ def sitemap_page_urls(site_url: str, sitemap_xml: str, *, limit: int = 40) -> li
         if not _same_origin(site_url, candidate):
             continue
         path = urlparse(candidate).path.lower()
-        if any(path.endswith(s) for s in SKIP_SUFFIXES):
+        if _path_not_scannable(path):
             continue
         key = candidate.rstrip("/")
         if key not in seen:
@@ -143,6 +165,11 @@ def plan_scan_page_urls(
             ordered.append(url if url.endswith("/") or "." in urlparse(url).path else key)
 
     add(entry_url)
+    origin = _origin(entry_url)
+    for path in LEGAL_SEED_PATHS:
+        add(urljoin(origin + "/", path.lstrip("/")))
+        if len(ordered) >= max_pages:
+            return ordered[:max_pages]
     for link in discover_internal_links(entry_url, entry_html):
         add(link)
         if len(ordered) >= max_pages:

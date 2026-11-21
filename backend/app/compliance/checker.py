@@ -8,10 +8,13 @@ from bs4 import BeautifulSoup
 
 from app.compliance.privacy_detection import (
     MAX_EXTRA_FETCHES,
+    _href_suggests_privacy,
     _main_page_has_privacy_signal,
     _page_content_is_privacy_policy,
     _raw_html_mentions_privacy_url,
+    antibot_confirms_policy_url,
     collect_privacy_candidate_urls,
+    policy_urls_from_antibot_challenge,
     privacy_urls_from_robots,
     privacy_urls_from_sitemap,
 )
@@ -75,6 +78,11 @@ async def _locate_privacy_policy(
     for url, body in pages:
         if _page_content_is_privacy_policy(body):
             return True, f"Документ на странице: {url}"
+        for confirmed in policy_urls_from_antibot_challenge(body, url):
+            if _href_suggests_privacy(confirmed):
+                return True, (
+                    f"URL политики подтверждён (антибот, текст не прочитан): {confirmed}"
+                )
 
     candidates: list[str] = []
     for url, body in pages:
@@ -99,6 +107,10 @@ async def _locate_privacy_policy(
             continue
         if _page_content_is_privacy_policy(fetched.html):
             return True, f"Документ на странице: {candidate}"
+        if antibot_confirms_policy_url(candidate, fetched.html):
+            return True, (
+                f"URL политики подтверждён (антибот, текст не прочитан): {candidate}"
+            )
         if _raw_html_mentions_privacy_url(candidate, fetched.html):
             if _main_page_has_privacy_signal(fetched.html):
                 return True, f"Страница политики: {candidate}"

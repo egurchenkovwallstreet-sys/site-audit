@@ -95,6 +95,11 @@ _RAW_PRIVACY_IN_SOURCE = re.compile(
     re.IGNORECASE,
 )
 
+_BACK_LOCATION = re.compile(
+    r"back_location=([^\s\"'&]+)",
+    re.IGNORECASE,
+)
+
 MAX_EXTRA_FETCHES = 12
 
 
@@ -255,6 +260,34 @@ def _page_content_is_privacy_policy(html: str) -> bool:
     return False
 
 
+def policy_urls_from_antibot_challenge(html: str, page_url: str) -> list[str]:
+    """Servicepipe/Qrator: в заглушке back_location указывает реальный URL политики."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for match in _BACK_LOCATION.finditer(html):
+        raw = unquote(match.group(1))
+        if not raw.startswith("http"):
+            raw = urljoin(page_url, raw)
+        if not _href_suggests_privacy(raw):
+            continue
+        key = raw.split("#")[0].rstrip("/")
+        if _same_origin(page_url, key) and key not in seen:
+            seen.add(key)
+            found.append(key)
+    return found
+
+
+def antibot_confirms_policy_url(candidate_url: str, html: str | None) -> bool:
+    """Ответ — антибот, но back_location = тот же URL (страница существует)."""
+    if not html:
+        return False
+    target = urlparse(candidate_url).path.rstrip("/").lower()
+    for url in policy_urls_from_antibot_challenge(html, candidate_url):
+        if urlparse(url).path.rstrip("/").lower() == target:
+            return True
+    return False
+
+
 def collect_privacy_candidate_urls(page_url: str, html: str) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -270,13 +303,22 @@ def collect_privacy_candidate_urls(page_url: str, html: str) -> list[str]:
             seen.add(key)
             ordered.append(key)
 
+    priority_paths = (
+        "/legal-documents/politika_konfidencialnosti_0/",
+        "/legal-documents/politika_konfidencialnosti_0",
+        "/legal-documents/",
+    )
+    for path in priority_paths:
+        add(path)
+
     for target in policy_link_targets(page_url, html):
         add(target)
+    for extra in policy_urls_from_antibot_challenge(html, page_url):
+        add(extra)
+    for extra in _privacy_urls_in_raw(page_url, html):
+        add(extra)
 
     for path in COMMON_PRIVACY_PATHS:
         add(path)
-
-    for extra in _privacy_urls_in_raw(page_url, html):
-        add(extra)
 
     return ordered
