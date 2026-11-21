@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
-
-from urllib.parse import urljoin
 
 from app.compliance.privacy_detection import (
     MAX_EXTRA_FETCHES,
