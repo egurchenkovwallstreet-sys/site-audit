@@ -31,6 +31,7 @@ class ScanContext(BaseModel):
     tried_urls: list[str] | None = None
     scanned_urls: list[str] | None = None
     pages_checked: int | None = None
+    contact_emails: list[str] | None = None
 
 
 class ScanResponse(BaseModel):

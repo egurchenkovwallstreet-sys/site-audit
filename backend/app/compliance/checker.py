@@ -27,6 +27,7 @@ from app.compliance.tracking_scripts import (
 )
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
+from app.scan.email_discover import discover_contact_emails
 from app.scan.fetch import fetch_target_page
 from app.scan.playwright_fetch import PlaywrightFetchBudget, fetch_target_page_smart
 from app.scan.site_scan import fetch_scan_site
@@ -266,6 +267,7 @@ def compliance_context_dict(
     scanned_urls: list[str] | None = None,
     pages_checked: int | None = None,
     playwright_urls: list[str] | None = None,
+    contact_emails: list[str] | None = None,
 ) -> dict[str, Any]:
     scope = CHECK_SCOPE_NOTE
     if used_fallback and scanned_url and requested_url:
@@ -295,6 +297,8 @@ def compliance_context_dict(
         ctx["pages_checked"] = pages_checked
     if playwright_urls:
         ctx["playwright_urls"] = playwright_urls
+    if contact_emails is not None:
+        ctx["contact_emails"] = contact_emails
     return ctx
 
 
@@ -325,12 +329,23 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         )
         return ctx
 
+    email_pages: list[tuple[str, str]] = (
+        [(p.url, p.html) for p in bundle.pages]
+        if bundle.pages
+        else []
+    )
+    if entry.html:
+        email_pages.append((page_url, entry.html))
+    contact_emails = discover_contact_emails(email_pages, site_url=normalized)
+
     if not bundle.html_available:
+        ctx = _empty_ctx()
+        ctx["contact_emails"] = contact_emails
         return [
             blocked_scan_finding(
                 "compliance", fetch, tried_urls=entry.tried_urls
             )
-        ], _empty_ctx()
+        ], ctx
 
     html = entry.html or ""
     extra_pages = [(u, h) for u, h in page_pairs if u.rstrip("/") != page_url.rstrip("/")]
@@ -380,5 +395,6 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         scanned_urls=scanned_urls,
         pages_checked=len(scanned_urls),
         playwright_urls=bundle.browser_budget.used_urls or None,
+        contact_emails=contact_emails,
     )
     return findings, ctx

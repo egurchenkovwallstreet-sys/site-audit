@@ -383,3 +383,18 @@
   font-weight: 600;
   margin: 0 0 calc(0.35rem * var(--ui));
 }
+
+.emailList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.35rem * var(--ui));
+}
+
+.emailLink {
+  color: var(--accent);
+  font-size: calc(0.95rem * var(--ui));
+  word-break: break-all;
+}

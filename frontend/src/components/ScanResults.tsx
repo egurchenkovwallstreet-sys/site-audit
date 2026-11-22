@@ -24,6 +24,7 @@ type ScanContext = {
   tried_urls?: string[];
   scanned_urls?: string[];
   pages_checked?: number;
+  contact_emails?: string[];
 };
 
 type Scan = {
@@ -392,6 +393,33 @@ export function ScanResults({
                 <p className={styles.sectionEmpty}>
                   Технических сценариев со штрафом не найдено.
                 </p>
+              )}
+            </section>
+
+            <section
+              className={styles.sectionBlock}
+              aria-labelledby="email-heading"
+            >
+              <h3 id="email-heading" className={styles.sectionTitle}>
+                E-mail на сайте
+              </h3>
+              <p className={styles.sectionHint}>
+                Ищем адреса на страницах, которые успели открыть (ссылки
+                mailto: и текст на странице).
+              </p>
+              {scan.context?.contact_emails &&
+              scan.context.contact_emails.length > 0 ? (
+                <ul className={styles.emailList}>
+                  {scan.context.contact_emails.map((email) => (
+                    <li key={email}>
+                      <a className={styles.emailLink} href={`mailto:${email}`}>
+                        {email}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.sectionEmpty}>Почта не найдена.</p>
               )}
             </section>
           </>
