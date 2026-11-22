@@ -7,5 +7,6 @@ COMPOSE=(docker compose -f docker-compose.yml -f deploy/docker-compose.witty.yml
 "${COMPOSE[@]}" run --rm \
   -v "$REPO:/workspace:ro" \
   --no-deps \
+  --entrypoint python \
   backend \
-  python /workspace/scripts/regression_scan.py "$@"
+  /workspace/scripts/regression_scan.py "$@"
