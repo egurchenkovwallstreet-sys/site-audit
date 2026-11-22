@@ -27,7 +27,7 @@ from app.compliance.tracking_scripts import (
 )
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
-from app.scan.email_discover import discover_contact_emails
+from app.scan.email_discover import discover_contact_emails_for_site
 from app.scan.fetch import fetch_target_page
 from app.scan.playwright_fetch import PlaywrightFetchBudget, fetch_target_page_smart
 from app.scan.site_scan import fetch_scan_site
@@ -336,7 +336,12 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
     )
     if entry.html:
         email_pages.append((page_url, entry.html))
-    contact_emails = discover_contact_emails(email_pages, site_url=normalized)
+    contact_emails = await discover_contact_emails_for_site(
+        normalized,
+        page_url,
+        entry.html or "",
+        email_pages,
+    )
 
     if not bundle.html_available:
         ctx = _empty_ctx()

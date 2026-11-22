@@ -404,8 +404,8 @@ export function ScanResults({
                 E-mail на сайте
               </h3>
               <p className={styles.sectionHint}>
-                Ищем адреса на страницах, которые успели открыть (ссылки
-                mailto: и текст на странице).
+                Смотрим открытые страницы, при возможности — политику ПДн и
+                оферту (там часто указана почта оператора).
               </p>
               {scan.context?.contact_emails &&
               scan.context.contact_emails.length > 0 ? (
