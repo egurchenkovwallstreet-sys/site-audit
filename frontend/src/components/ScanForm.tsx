@@ -72,7 +72,10 @@ export function ScanForm({
         </button>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
-      <p className={styles.hint}>Бесплатно. Полный отчёт — от 990 ₽.</p>
+      <p className={styles.hint}>
+        Сейчас после проверки видны все найденные пункты. Полные отчёты 990 ₽ и 1990 ₽
+        — после запуска оплаты.
+      </p>
     </form>
   );
 }
