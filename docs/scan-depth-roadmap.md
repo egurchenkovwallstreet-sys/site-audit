@@ -22,7 +22,9 @@
 | **A2** ✅ | Контактные и юридические страницы в обход | меньше ложных «политики нет» |
 | **A3** ✅ | Полнота cookie policy при баннере | `cookie_policy_not_disclosed` / `cookie_policy_incomplete` |
 | **B0** ✅ | Пассивные пробы (.git, .env, …) + mixed content | дифференциация security |
-| **B** | ZAP/Nuclei (docker-compose, по флагу) | CVE, активные тесты |
+| **B1** ✅ | Nuclei в скане (бюджет до 120 с, tags exposure/misconfig/cve) | актив, в бюджете 10 мин |
+| **B1** ✅ | Бюджет скана **10 мин**, до **22** страниц, PW **14** | глубина 152-ФЗ + обход |
+| **B** | ZAP baseline | spider + passive rules |
 | **B** | GigaChat по тексту политики | сложные формулировки |
 
 Новые коды штрафов — только через `compliance-legal-map.md` + `penalties.py`.

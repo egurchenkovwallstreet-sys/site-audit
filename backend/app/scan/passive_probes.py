@@ -3,9 +3,8 @@ from __future__ import annotations
 import re
 from urllib.parse import urljoin, urlparse
 
+from app.config import get_settings
 from app.scan.fetch import fetch_target_page
-
-MAX_PROBE_REQUESTS = 7
 
 # path, сигнатуры в теле (lower), заголовок находки
 SENSITIVE_PROBES: tuple[tuple[str, tuple[str, ...], str], ...] = (
@@ -39,6 +38,16 @@ SENSITIVE_PROBES: tuple[tuple[str, tuple[str, ...], str], ...] = (
         (r"bud1",),
         "Доступен служебный файл .DS_Store",
     ),
+    (
+        "/swagger-ui/",
+        (r"swagger", r"openapi"),
+        "Публично доступен Swagger UI",
+    ),
+    (
+        "/server-status",
+        (r"apache server status", r"server version"),
+        "Публично доступна server-status",
+    ),
 )
 
 
@@ -62,9 +71,10 @@ def _body_matches(body: str, patterns: tuple[str, ...]) -> bool:
 
 async def probe_sensitive_paths(site_url: str) -> list[tuple[str, str, str]]:
     """HEAD/GET только типовых утечек; одна находка — один путь."""
+    limit = max(3, min(15, get_settings().passive_probe_max))
     origin = _origin(site_url)
     hits: list[tuple[str, str, str]] = []
-    for path, patterns, title in SENSITIVE_PROBES[:MAX_PROBE_REQUESTS]:
+    for path, patterns, title in SENSITIVE_PROBES[:limit]:
         probe_url = urljoin(origin + "/", path.lstrip("/"))
         result = await fetch_target_page(probe_url)
         if result.status_code != 200:

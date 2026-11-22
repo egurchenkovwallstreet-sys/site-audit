@@ -15,7 +15,9 @@ from app.scan.page_fetch import (
     fetch_for_scan,
     page_is_readable,
 )
+from app.config import get_settings
 from app.scan.playwright_fetch import PlaywrightFetchBudget, fetch_target_page_smart
+from app.scan.scan_budget import ScanTimeBudget
 from app.scan.site_pages import (
     LEGAL_SEED_PATHS,
     MAX_SCAN_PAGES,
@@ -102,6 +104,7 @@ async def _bootstrap_pages_via_browser(
     *,
     budget: PlaywrightFetchBudget,
     max_pages: int,
+    time_budget: ScanTimeBudget | None = None,
 ) -> list[ScannedPage]:
     if not budget.enabled or budget.remaining <= 0:
         return []
@@ -127,6 +130,8 @@ async def _bootstrap_pages_via_browser(
 
     pages: list[ScannedPage] = []
     for url in candidates:
+        if time_budget is not None and time_budget.expired():
+            break
         if len(pages) >= max_pages:
             break
         res = await fetch_target_page_smart(url, budget)
@@ -146,8 +151,13 @@ async def _bootstrap_pages_via_browser(
 async def fetch_scan_site(
     requested_url: str,
     *,
-    max_pages: int = MAX_SCAN_PAGES,
+    max_pages: int | None = None,
+    time_budget: ScanTimeBudget | None = None,
 ) -> SiteScanBundle:
+    settings = get_settings()
+    if max_pages is None:
+        max_pages = settings.scan_max_pages
+    tb = time_budget or ScanTimeBudget.from_settings()
     budget = PlaywrightFetchBudget.from_settings()
     entry = await fetch_for_scan(requested_url, budget=budget)
 
@@ -157,6 +167,7 @@ async def fetch_scan_site(
             entry,
             budget=budget,
             max_pages=max_pages,
+            time_budget=tb,
         )
         if boot:
             lead = boot[0]
@@ -198,6 +209,8 @@ async def fetch_scan_site(
 
     pages: list[ScannedPage] = []
     for url in plan:
+        if tb.expired():
+            break
         if url.rstrip("/") == entry_url.rstrip("/"):
             pages.append(
                 ScannedPage(

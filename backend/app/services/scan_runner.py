@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import check_url_compliance
 from app.models.entities import Finding, Scan, ScanStatus
+from app.config import get_settings
+from app.scan.nuclei_scan import run_nuclei_scan
+from app.scan.scan_budget import ScanTimeBudget
 from app.scan.site_scan import fetch_scan_site
 from app.scan.technical_checker import check_url_technical
 
@@ -18,7 +21,8 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
     try:
         rows: list[dict] = []
         context: dict | None = None
-        bundle = await fetch_scan_site(scan.target_url)
+        time_budget = ScanTimeBudget.from_settings()
+        bundle = await fetch_scan_site(scan.target_url, time_budget=time_budget)
         try:
             compliance_rows, context = await check_url_compliance(
                 scan.target_url,
@@ -31,7 +35,21 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
             rows.extend(await check_url_technical(scan.target_url, bundle=bundle))
         except Exception:
             pass
+        try:
+            if not time_budget.expired():
+                rows.extend(
+                    await run_nuclei_scan(
+                        scan.target_url,
+                        timeout_sec=time_budget.remaining(),
+                    )
+                )
+        except Exception:
+            pass
         if context is not None:
+            settings = get_settings()
+            context["time_budget_sec"] = settings.scan_time_budget_sec
+            context["scan_max_pages"] = settings.scan_max_pages
+            context["nuclei_enabled"] = settings.nuclei_enabled
             scan.context_json = json.dumps(context, ensure_ascii=False)
         for row in rows:
             session.add(

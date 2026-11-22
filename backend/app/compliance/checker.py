@@ -47,10 +47,18 @@ from app.scan.site_scan import SiteScanBundle, fetch_scan_site
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
 
-CHECK_SCOPE_NOTE = (
-    "До 15 страниц того же сайта: точка входа, переходы с неё и выборка из sitemap; "
-    "плюс robots.txt и типовые адреса политики."
-)
+def _check_scope_note() -> str:
+    from app.config import get_settings
+
+    n = get_settings().scan_max_pages
+    budget = get_settings().scan_time_budget_sec // 60
+    return (
+        f"До {n} страниц того же сайта (бюджет ~{budget} мин): вход, ссылки, sitemap, "
+        "типовые legal-URL; при включённом Nuclei — активные шаблоны exposure/misconfig/CVE."
+    )
+
+
+CHECK_SCOPE_NOTE = _check_scope_note()
 
 
 @dataclass(slots=True)

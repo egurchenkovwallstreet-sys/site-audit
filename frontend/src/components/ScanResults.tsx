@@ -58,9 +58,9 @@ const STEPS = [
   "Оцениваем технические риски",
 ] as const;
 
-/** Верхняя оценка 3–5 мин (реальное время зависит от сайта). */
-const ESTIMATE_MIN_MS = 3 * 60 * 1000;
-const ESTIMATE_MAX_MS = 5 * 60 * 1000;
+/** Ориентир 7–10 мин (бюджет скана на сервере до 10 мин). */
+const ESTIMATE_MIN_MS = 7 * 60 * 1000;
+const ESTIMATE_MAX_MS = 10 * 60 * 1000;
 const TICK_MS = 100;
 const COUNTDOWN_ZERO_MS = 45;
 
@@ -579,8 +579,8 @@ export function ScanResults({
               {accelerating
                 ? "Ускоряем отсчёт — отчёт уже готов"
                 : finishing
-                  ? "Проверка может занять до 5 минут — ждём сервер…"
-                  : "Ориентир по времени (до 5 минут)"}
+                  ? "Проверка может занять до 10 минут — ждём сервер…"
+                  : "Ориентир по времени (до 10 минут)"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>

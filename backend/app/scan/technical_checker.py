@@ -14,6 +14,9 @@ SECURITY_HEADERS = (
     ("x-frame-options", "X-Frame-Options", "medium", "missing_x_frame_options"),
     ("content-security-policy", "Content-Security-Policy (CSP)", "medium", "missing_csp"),
     ("referrer-policy", "Referrer-Policy", "low", "missing_referrer_policy"),
+    ("permissions-policy", "Permissions-Policy", "low", "missing_permissions_policy"),
+    ("cross-origin-opener-policy", "Cross-Origin-Opener-Policy", "low", "missing_coop"),
+    ("cross-origin-resource-policy", "Cross-Origin-Resource-Policy", "low", "missing_corp"),
 )
 
 
@@ -136,6 +139,20 @@ async def check_url_technical(
                     severity="low",
                     remediation="Скройте или упростите заголовок Server.",
                     issue_key="server_disclosure",
+                )
+            )
+            break
+
+    for page_url, header_keys in header_sets:
+        acao = header_keys.get("access-control-allow-origin", "")
+        if acao.strip() in ("*",) and target.lower().startswith("https://"):
+            findings.append(
+                _finding(
+                    title="CORS: Access-Control-Allow-Origin: *",
+                    description=f"Страница {page_url}: разрешён любой origin.",
+                    severity="medium",
+                    remediation="Ограничьте CORS конкретными доверенными доменами.",
+                    issue_key="cors_wildcard",
                 )
             )
             break

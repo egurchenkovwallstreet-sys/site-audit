@@ -78,6 +78,22 @@ SECURITY_BREACH_SCENARIOS: dict[str, BreachScenario] = {
         "Пассивный перехват или подмена HTTP-ресурсов на HTTPS-странице "
         "повышает риск кражи сессии и данных форм.",
     ),
+    "cors_wildcard": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "Свободный CORS упрощает кражу данных API с других сайтов при XSS.",
+    ),
+    "missing_permissions_policy": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "Браузерные API (камера, гео) без политики разрешений.",
+    ),
+    "missing_coop": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "Без COOP возможны атаки через перекрёстные окна (cross-window).",
+    ),
+    "missing_corp": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "Без CORP ресурсы могут читаться с чужих origin.",
+    ),
 }
 
 

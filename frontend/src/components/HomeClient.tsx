@@ -19,7 +19,7 @@ export function HomeClient() {
           <p className={styles.eyebrow}>152-ФЗ + технические сигналы</p>
           <h1 className={styles.title}>
             <span className={styles.titleLine}>Проверьте свой сайт</span>
-            <span className={styles.titleLineAccent}>за 5 минут</span>
+            <span className={styles.titleLineAccent}>до 10 минут</span>
           </h1>
           <p className={styles.subtitle}>
             Уязвимости и риски штрафов по 152-ФЗ

@@ -22,7 +22,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     playwright_enabled: bool = True
-    playwright_max_fetches: int = 8
+    playwright_max_fetches: int = 14
+
+    # Бюджет одного скана (сек): обход + compliance + passive + Nuclei
+    scan_time_budget_sec: int = 600
+    scan_max_pages: int = 22
+
+    nuclei_enabled: bool = True
+    nuclei_timeout_sec: int = 120
+    passive_probe_max: int = 12
 
     public_site_url: str = "http://localhost:3000"
 
