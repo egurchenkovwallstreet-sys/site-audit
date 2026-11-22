@@ -62,13 +62,16 @@ def _security_issue_keys(findings: list[dict]) -> set[str]:
     return keys
 
 
-async def _run_case(case: dict) -> tuple[bool, list[str]]:
+async def _run_case(case: dict) -> tuple[bool, list[str], dict | None]:
     url = case["url"]
-    expect = case.get("expect", {})
+    expect = case.get("expect") or {}
     errors: list[str] = []
-    bundle = await fetch_scan_site(url)
-    compliance_rows, ctx = await check_url_compliance(url, bundle=bundle)
-    tech_rows = await check_url_technical(url, bundle=bundle)
+    try:
+        bundle = await fetch_scan_site(url)
+        compliance_rows, ctx = await check_url_compliance(url, bundle=bundle)
+        tech_rows = await check_url_technical(url, bundle=bundle)
+    except Exception as exc:
+        return False, [f"сбой скана: {exc}"], None
 
     codes = _compliance_codes(compliance_rows)
     issue_keys = _security_issue_keys(tech_rows)
@@ -108,7 +111,13 @@ async def _run_case(case: dict) -> tuple[bool, list[str]]:
         if key not in issue_keys:
             errors.append(f"не найдена ожидаемая технаходка: {key}")
 
-    return not errors, errors
+    summary = {
+        "pages_checked": pages,
+        "compliance_codes": sorted(codes),
+        "security_keys": sorted(issue_keys),
+        "finding_count": len(compliance_rows) + len(tech_rows),
+    }
+    return not errors, errors, summary
 
 
 async def main() -> int:
@@ -125,21 +134,44 @@ async def main() -> int:
         default=None,
         help="Запустить только кейс по полю name (подстрока)",
     )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        default=None,
+        help="Только кейсы с тегом (bank, smoke, strict, …)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Максимум кейсов (для выборочного прогона панели)",
+    )
     args = parser.parse_args()
-    cases = json.loads(args.file.read_text(encoding="utf-8"))
+    raw = json.loads(args.file.read_text(encoding="utf-8"))
+    cases = raw if isinstance(raw, list) else raw.get("cases", [])
     if args.case:
         cases = [c for c in cases if args.case.lower() in (c.get("name") or "").lower()]
+    if args.tag:
+        cases = [c for c in cases if args.tag.lower() in (c.get("tags") or [])]
+    if args.limit is not None:
+        cases = cases[: args.limit]
     failed = 0
+    smoke_ok = 0
     for case in cases:
-        ok, errs = await _run_case(case)
+        ok, errs, summary = await _run_case(case)
         label = case.get("name") or case.get("url")
         if ok:
-            print(f"OK  {label}")
+            smoke_ok += 1
+            extra = ""
+            if summary and "smoke" in (case.get("tags") or []):
+                extra = f" (findings={summary['finding_count']}, pages={summary['pages_checked']})"
+            print(f"OK  {label}{extra}")
         else:
             failed += 1
             print(f"FAIL {label}")
             for e in errs:
                 print(f"  - {e}")
+    print(f"---\nВсего: {len(cases)}, OK: {smoke_ok}, FAIL: {failed}")
     return 1 if failed else 0
 
 

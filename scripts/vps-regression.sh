@@ -10,6 +10,7 @@ if [[ -z "$CID" ]]; then
   exit 1
 fi
 docker cp "$REPO/scripts/regression_scan.py" "$CID:/tmp/regression_scan.py"
-docker cp "$REPO/scripts/regression_urls.json" "$CID:/tmp/regression_urls.json"
+REG_FILE="${REGRESSION_FILE:-regression_urls.json}"
+docker cp "$REPO/scripts/$REG_FILE" "$CID:/tmp/regression_urls.json"
 "${COMPOSE[@]}" exec -T backend \
   python /tmp/regression_scan.py --file /tmp/regression_urls.json "$@"

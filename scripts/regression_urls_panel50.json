@@ -1,0 +1,289 @@
+[
+  {
+    "name": "Darom Flutter SPA",
+    "url": "https://darom-app.online/",
+    "tags": ["spa", "strict"],
+    "expect": {
+      "privacy_found": true,
+      "min_pages_checked": 1,
+      "absent_penalty_codes": ["no_privacy_policy", "no_cookie_banner"]
+    }
+  },
+  {
+    "name": "example.com baseline",
+    "url": "https://example.com/",
+    "tags": ["baseline", "strict"],
+    "expect": {
+      "privacy_found": false,
+      "min_pages_checked": 1
+    }
+  },
+  {
+    "name": "okno.ru forms",
+    "url": "https://okno.ru/",
+    "tags": ["retail", "strict"],
+    "expect": {
+      "min_pages_checked": 1,
+      "absent_penalty_codes": ["processing_without_consent"]
+    }
+  },
+  {
+    "name": "cian.ru antibot",
+    "url": "https://www.cian.ru/",
+    "tags": ["realestate", "antibot", "strict"],
+    "expect": {
+      "privacy_found": true,
+      "absent_penalty_codes": ["no_privacy_policy"]
+    }
+  },
+  {
+    "name": "etagi.com",
+    "url": "https://www.etagi.com/",
+    "tags": ["realestate", "antibot", "strict"],
+    "expect": {
+      "absent_penalty_codes": ["no_privacy_policy"]
+    }
+  },
+  {
+    "name": "beautysova.ru",
+    "url": "https://beautysova.ru/",
+    "tags": ["smb", "strict"],
+    "expect": {
+      "min_pages_checked": 1
+    }
+  },
+  {
+    "name": "avito.ru",
+    "url": "https://www.avito.ru/",
+    "tags": ["marketplace", "strict"],
+    "expect": {
+      "absent_penalty_codes": ["processing_without_consent"]
+    }
+  },
+  {
+    "name": "attik.ru antibot",
+    "url": "https://attik.ru/",
+    "tags": ["smb", "antibot", "strict"],
+    "expect": {
+      "max_pages_checked": 0,
+      "absent_penalty_codes": [
+        "no_privacy_policy",
+        "processing_without_consent",
+        "no_cookie_banner"
+      ]
+    }
+  },
+  {
+    "name": "HTTP no TLS",
+    "url": "http://example.com/",
+    "tags": ["baseline", "strict"],
+    "expect": {
+      "required_issue_keys": ["http_no_tls"]
+    }
+  },
+  {
+    "name": "Сбербанк",
+    "url": "https://www.sberbank.ru/",
+    "tags": ["bank", "smoke"]
+  },
+  {
+    "name": "Альфа-Банк",
+    "url": "https://alfabank.ru/",
+    "tags": ["bank", "smoke"]
+  },
+  {
+    "name": "Т-Банк",
+    "url": "https://www.tbank.ru/",
+    "tags": ["bank", "smoke"]
+  },
+  {
+    "name": "ВТБ",
+    "url": "https://www.vtb.ru/",
+    "tags": ["bank", "smoke"]
+  },
+  {
+    "name": "Ozon",
+    "url": "https://www.ozon.ru/",
+    "tags": ["marketplace", "smoke"]
+  },
+  {
+    "name": "Wildberries",
+    "url": "https://www.wildberries.ru/",
+    "tags": ["marketplace", "smoke"]
+  },
+  {
+    "name": "Lamoda",
+    "url": "https://www.lamoda.ru/",
+    "tags": ["marketplace", "smoke"]
+  },
+  {
+    "name": "DNS",
+    "url": "https://www.dns-shop.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "М.Видео",
+    "url": "https://www.mvideo.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "Ситилинк",
+    "url": "https://www.citilink.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "Яндекс",
+    "url": "https://ya.ru/",
+    "tags": ["portal", "smoke"]
+  },
+  {
+    "name": "Mail.ru",
+    "url": "https://mail.ru/",
+    "tags": ["portal", "smoke"]
+  },
+  {
+    "name": "VK",
+    "url": "https://vk.com/",
+    "tags": ["portal", "smoke"]
+  },
+  {
+    "name": "РБК",
+    "url": "https://www.rbc.ru/",
+    "tags": ["media", "smoke"]
+  },
+  {
+    "name": "Lenta.ru",
+    "url": "https://lenta.ru/",
+    "tags": ["media", "smoke"]
+  },
+  {
+    "name": "Коммерсантъ",
+    "url": "https://www.kommersant.ru/",
+    "tags": ["media", "smoke"]
+  },
+  {
+    "name": "Госуслуги",
+    "url": "https://www.gosuslugi.ru/",
+    "tags": ["gov", "smoke"]
+  },
+  {
+    "name": "ФНС",
+    "url": "https://www.nalog.gov.ru/",
+    "tags": ["gov", "smoke"]
+  },
+  {
+    "name": "mos.ru",
+    "url": "https://www.mos.ru/",
+    "tags": ["gov", "smoke"]
+  },
+  {
+    "name": "ВШЭ",
+    "url": "https://www.hse.ru/",
+    "tags": ["edu", "smoke"]
+  },
+  {
+    "name": "МГУ",
+    "url": "https://www.msu.ru/",
+    "tags": ["edu", "smoke"]
+  },
+  {
+    "name": "Яндекс Еда",
+    "url": "https://eda.yandex.ru/",
+    "tags": ["delivery", "smoke"]
+  },
+  {
+    "name": "Drom",
+    "url": "https://www.drom.ru/",
+    "tags": ["auto", "smoke"]
+  },
+  {
+    "name": "Auto.ru",
+    "url": "https://auto.ru/",
+    "tags": ["auto", "smoke"]
+  },
+  {
+    "name": "Инвитро",
+    "url": "https://www.invitro.ru/",
+    "tags": ["med", "smoke"]
+  },
+  {
+    "name": "Гемотест",
+    "url": "https://gemotest.ru/",
+    "tags": ["med", "smoke"]
+  },
+  {
+    "name": "Леруа Мерлен",
+    "url": "https://leroymerlin.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "Петрович",
+    "url": "https://petrovich.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "IKEA RU",
+    "url": "https://www.ikea.com/ru/ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "Skillbox",
+    "url": "https://skillbox.ru/",
+    "tags": ["edtech", "smoke"]
+  },
+  {
+    "name": "Нетология",
+    "url": "https://netology.ru/",
+    "tags": ["edtech", "smoke"]
+  },
+  {
+    "name": "REG.RU",
+    "url": "https://www.reg.ru/",
+    "tags": ["hosting", "smoke"]
+  },
+  {
+    "name": "Timeweb",
+    "url": "https://timeweb.com/",
+    "tags": ["hosting", "smoke"]
+  },
+  {
+    "name": "2GIS",
+    "url": "https://2gis.ru/",
+    "tags": ["service", "smoke"]
+  },
+  {
+    "name": "HeadHunter",
+    "url": "https://hh.ru/",
+    "tags": ["service", "smoke"]
+  },
+  {
+    "name": "Superjob",
+    "url": "https://www.superjob.ru/",
+    "tags": ["service", "smoke"]
+  },
+  {
+    "name": "Ростелеком",
+    "url": "https://www.rt.ru/",
+    "tags": ["telecom", "smoke"]
+  },
+  {
+    "name": "билайн",
+    "url": "https://beeline.ru/",
+    "tags": ["telecom", "smoke"]
+  },
+  {
+    "name": "МТС",
+    "url": "https://moskva.mts.ru/",
+    "tags": ["telecom", "smoke"]
+  },
+  {
+    "name": "Спортмастер",
+    "url": "https://www.sportmaster.ru/",
+    "tags": ["retail", "smoke"]
+  },
+  {
+    "name": "Детский мир",
+    "url": "https://www.detmir.ru/",
+    "tags": ["retail", "smoke"]
+  }
+]
