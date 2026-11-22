@@ -34,3 +34,22 @@ docker compose exec -T backend python /tmp/regression_scan.py --file /tmp/regres
 Банки, маркетплейсы, медиа, госсектор, образование, авто, медицина, retail, телеком, хостинг, сервисы, SMB/SPA, antibot, HTTP baseline.
 
 Перед приёмкой релиза достаточно **строгого набора**; панель — раз в спринт или после крупных изменений движка.
+
+## Расписание на VPS (по умолчанию)
+
+| Когда (МСК) | Что | Длительность |
+|-------------|-----|--------------|
+| **Воскресенье 01:30** | `regression_urls.json` (9 strict) | ~15–25 мин |
+| **1-е число 01:15** | `regression_urls_panel50.json` | ~2–4 ч |
+
+Окно запуска: **01:00–02:59** (`scheduled-regression.sh` иначе выходит без прогона).  
+Ручной прогон в любое время: `FORCE=1 bash scripts/scheduled-regression.sh weekly`.
+
+Установка cron на сервере (один раз):
+
+```bash
+bash /root/apps/site-audit/scripts/install-regression-cron.sh
+```
+
+Логи: `/var/log/site-audit/regression.log` и `strict9-*.log` / `panel50-*.log`.  
+Прогон с пониженным приоритетом (`nice` + `ionice`), lock-файл от параллельных запусков.

@@ -23,7 +23,7 @@ ssh root@194.87.220.206 'bash /root/apps/site-audit/scripts/vps-regression.sh'
 Один кейс: `.../vps-regression.sh --case Darom`
 
 Панель 50 сайтов (~2–4 ч): `REGRESSION_FILE=regression_urls_panel50.json bash .../vps-regression.sh`  
-См. `docs/regression-panel.md`.
+См. `docs/regression-panel.md`. Плановый прогон — cron на VPS (вс 01:30 / 1-е 01:15 MSK), не вручную в дневные часы.
 
 Файл `.env` на сервере **не перезаписывается** при обычном деплое (`remote-redeploy.sh`).
 Полная первичная установка — только `scripts/deploy-witty.sh` (создаёт `.env` один раз).
