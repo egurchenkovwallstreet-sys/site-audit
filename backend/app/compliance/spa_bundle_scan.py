@@ -43,8 +43,10 @@ _PRIVACY_ROUTE = re.compile(r'["\']/(?:privacy|offer)["\']', re.IGNORECASE)
 class SpaBundleScan:
     privacy_found: bool = False
     privacy_script_url: str | None = None
+    privacy_script_body: str | None = None
     consent_found: bool = False
     consent_script_url: str | None = None
+    consent_script_body: str | None = None
 
 
 def _discover_script_urls(page_url: str, html: str) -> list[str]:
@@ -97,6 +99,7 @@ async def analyze_spa_bundles(page_url: str, html: str) -> SpaBundleScan:
         if not result.privacy_found and _body_has_privacy(body):
             result.privacy_found = True
             result.privacy_script_url = script_url
+            result.privacy_script_body = body
         if (
             not result.consent_found
             and not script_url_is_vendor_bundle(script_url)
@@ -104,6 +107,7 @@ async def analyze_spa_bundles(page_url: str, html: str) -> SpaBundleScan:
         ):
             result.consent_found = True
             result.consent_script_url = script_url
+            result.consent_script_body = body
         if result.privacy_found and result.consent_found:
             break
     return result

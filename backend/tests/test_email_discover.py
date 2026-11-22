@@ -1,5 +1,6 @@
 import pytest
 
+from app.compliance.spa_bundle_scan import SpaBundleScan
 from app.scan.email_discover import (
     discover_contact_emails,
     discover_contact_emails_for_site,
@@ -51,3 +52,38 @@ async def test_policy_page_fetched_for_email(monkeypatch):
         [("https://shop.ru/", home)],
     )
     assert "legal@shop.ru" in emails
+
+
+@pytest.mark.asyncio
+async def test_spa_bundle_email(monkeypatch):
+    home = '<html><script src="/main.dart.js"></script></html>'
+    bundle = (
+        "public_offer politika konfid "
+        "E.Gurchenkov@yandex.ru https://darom-app.online/ " + ("x" * 120)
+    )
+
+    async def fake_fetch(url: str, **kwargs):
+        if "main.dart.js" in url:
+            return bundle
+        return None
+
+    async def fake_page(url: str):
+        from app.scan.fetch import PageFetchResult
+
+        return PageFetchResult(200, home, {}, False, None)
+
+    monkeypatch.setattr("app.scan.email_discover.fetch_resource_text", fake_fetch)
+    monkeypatch.setattr("app.scan.email_discover.fetch_target_page", fake_page)
+
+    emails = await discover_contact_emails_for_site(
+        "https://darom-app.online/",
+        "https://darom-app.online/",
+        home,
+        [( "https://darom-app.online/", home)],
+        spa=SpaBundleScan(
+            privacy_found=True,
+            privacy_script_url="https://darom-app.online/main.dart.js",
+            privacy_script_body=bundle,
+        ),
+    )
+    assert "e.gurchenkov@yandex.ru" in emails

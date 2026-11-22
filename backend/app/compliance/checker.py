@@ -329,6 +329,9 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         )
         return ctx
 
+    html = entry.html or ""
+    spa = await analyze_spa_bundles(page_url, html) if html else SpaBundleScan()
+
     email_pages: list[tuple[str, str]] = (
         [(p.url, p.html) for p in bundle.pages]
         if bundle.pages
@@ -341,6 +344,7 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         page_url,
         entry.html or "",
         email_pages,
+        spa=spa,
     )
 
     if not bundle.html_available:
@@ -352,9 +356,7 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
             )
         ], ctx
 
-    html = entry.html or ""
     extra_pages = [(u, h) for u, h in page_pairs if u.rstrip("/") != page_url.rstrip("/")]
-    spa = await analyze_spa_bundles(page_url, html)
     privacy_found, privacy_source = await _locate_privacy_policy(
         page_url,
         html,
