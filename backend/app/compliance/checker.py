@@ -80,6 +80,8 @@ async def _locate_privacy_policy(
     for url, body in pages:
         if _page_content_is_privacy_policy(body):
             return True, f"Документ на странице: {url}"
+
+    for url, body in pages:
         for confirmed in policy_urls_from_antibot_challenge(body, url):
             if _href_suggests_privacy(confirmed):
                 return True, (

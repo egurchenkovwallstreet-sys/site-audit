@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
-from app.compliance.privacy_detection import policy_urls_from_antibot_challenge
+from app.compliance.privacy_detection import (
+    _href_suggests_privacy,
+    _page_content_is_privacy_policy,
+    policy_urls_from_antibot_challenge,
+)
 from app.scan.fetch import PageFetchResult, fetch_target_page
 from app.scan.page_fetch import (
     CONTACT_FALLBACK_PATHS,
@@ -50,9 +54,42 @@ class SiteScanBundle:
         return [(p.url, p.html) for p in self.pages]
 
 
+def _needs_browser_for_policy(url: str, html: str | None) -> bool:
+    if not html or _page_content_is_privacy_policy(html):
+        return False
+    return _href_suggests_privacy(url) or "legal-documents" in url.lower()
+
+
 def _site_origin(url: str) -> str:
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}"
+
+
+async def _fetch_scanned_page(
+    url: str,
+    budget: PlaywrightFetchBudget,
+) -> ScannedPage | None:
+    res = await fetch_target_page(url)
+    via_pw = False
+    needs_browser = not page_is_readable(res.html, res.status_code) or _needs_browser_for_policy(
+        url, res.html
+    )
+    if needs_browser:
+        smart = await fetch_target_page_smart(url, budget)
+        if page_is_readable(smart.html, smart.status_code):
+            better = (
+                not page_is_readable(res.html, res.status_code)
+                or _page_content_is_privacy_policy(smart.html or "")
+                or len(smart.html or "") > len(res.html or "")
+            )
+            if better:
+                res = smart
+                via_pw = url in budget.used_urls
+        elif not page_is_readable(res.html, res.status_code):
+            return None
+    if not page_is_readable(res.html, res.status_code):
+        return None
+    return ScannedPage(url, res.html or "", res, via_playwright=via_pw)
 
 
 async def _bootstrap_pages_via_browser(
@@ -167,15 +204,9 @@ async def fetch_scan_site(
                 )
             )
             continue
-        res = await fetch_target_page(url)
-        via_pw = False
-        if not page_is_readable(res.html, res.status_code):
-            smart = await fetch_target_page_smart(url, budget)
-            if not page_is_readable(smart.html, smart.status_code):
-                continue
-            res = smart
-            via_pw = url in budget.used_urls
-        pages.append(ScannedPage(url, res.html or "", res, via_playwright=via_pw))
+        scanned = await _fetch_scanned_page(url, budget)
+        if scanned:
+            pages.append(scanned)
 
     if not pages:
         pages.append(
