@@ -124,6 +124,12 @@
 - [x] `backend/app/data/penalties.py` + цвета и remediation.
 - [ ] Проверено на сервере набором эталонных URL.
 
+## Политика отчётов (согласовано)
+
+- [x] `docs/report-policy.md`, `.cursor/rules/report-antibot-policy.mdc` — антибот, честный scope, отчёты 990/1990 только после оплаты.
+- [x] Фаза A: на экране проверки все findings (подпись на форме).
+- [ ] Paywall превью vs полный отчёт (фаза B, ЮKassa).
+
 ## Шаг 6. Интеграция GigaChat
 
 - [ ] Отложено (после фазы A).
