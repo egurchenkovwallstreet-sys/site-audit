@@ -3,7 +3,9 @@ from __future__ import annotations
 from app.compliance.checker import validate_target_url
 from app.data.security_breach_risks import apply_breach_penalty
 from app.scan.access_findings import blocked_scan_finding, ssl_chain_finding
+from app.scan.mixed_content import find_mixed_content_urls
 from app.scan.page_fetch import page_is_readable
+from app.scan.passive_probes import probe_sensitive_paths
 from app.scan.site_scan import SiteScanBundle, fetch_scan_site
 
 SECURITY_HEADERS = (
@@ -196,5 +198,50 @@ async def check_url_technical(
                     issue_key="cookie_no_samesite",
                 )
             )
+
+    for probe_url, title, path in await probe_sensitive_paths(target):
+        findings.append(
+            _finding(
+                title=title,
+                description=(
+                    f"Запрос {probe_url} вернул HTTP 200 с признаками утечки ({path}). "
+                    "Проверьте, что артефакт не доступен из интернета."
+                ),
+                severity="high",
+                remediation="Закройте доступ к служебным файлам и каталогам на веб-сервере.",
+                issue_key="exposed_sensitive_path",
+            )
+        )
+
+    mixed_samples: list[str] = []
+    mixed_pages: list[str] = []
+    for page_url, html, status in [
+        (entry.fetched_url, entry.html, entry.result.status_code),
+        *[(p.url, p.html, p.result.status_code) for p in bundle.pages],
+    ]:
+        if not page_is_readable(html, status):
+            continue
+        urls = find_mixed_content_urls(page_url, html or "")
+        if urls:
+            mixed_pages.append(page_url)
+            for u in urls:
+                if u not in mixed_samples:
+                    mixed_samples.append(u)
+        if len(mixed_samples) >= 5:
+            break
+    if mixed_samples:
+        findings.append(
+            _finding(
+                title="Смешанный контент (HTTP на HTTPS-странице)",
+                description=(
+                    f"На {len(mixed_pages)} страницах ресурсы грузятся по HTTP "
+                    f"(пример: {mixed_samples[0]}). "
+                    "Браузер может блокировать контент или снижать защиту."
+                ),
+                severity="medium",
+                remediation="Переведите статику и внешние ссылки на HTTPS.",
+                issue_key="mixed_content",
+            )
+        )
 
     return findings

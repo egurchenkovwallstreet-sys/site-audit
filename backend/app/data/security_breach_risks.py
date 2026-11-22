@@ -68,6 +68,16 @@ SECURITY_BREACH_SCENARIOS: dict[str, BreachScenario] = {
         "pd_leak_via_security_gap_minor",
         "Недоступность защитных механизмов на периметре может сочетаться с иными уязвимостями.",
     ),
+    "exposed_sensitive_path": BreachScenario(
+        "pd_leak_via_security_gap",
+        "Открытый .git, .env или резервные конфиги могут привести к компрометации "
+        "и утечке персональных данных из БД.",
+    ),
+    "mixed_content": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "Пассивный перехват или подмена HTTP-ресурсов на HTTPS-странице "
+        "повышает риск кражи сессии и данных форм.",
+    ),
 }
 
 

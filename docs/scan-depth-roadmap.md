@@ -21,7 +21,8 @@
 | **A2** ✅ | Реквизиты оператора на обходе (+/offer, /rekvizity) | `operator_requisites_not_found` |
 | **A2** ✅ | Контактные и юридические страницы в обход | меньше ложных «политики нет» |
 | **A3** ✅ | Полнота cookie policy при баннере | `cookie_policy_not_disclosed` / `cookie_policy_incomplete` |
-| **B** | ZAP/Nuclei ограниченно | утечки, CVE |
+| **B0** ✅ | Пассивные пробы (.git, .env, …) + mixed content | дифференциация security |
+| **B** | ZAP/Nuclei (docker-compose, по флагу) | CVE, активные тесты |
 | **B** | GigaChat по тексту политики | сложные формулировки |
 
 Новые коды штрафов — только через `compliance-legal-map.md` + `penalties.py`.

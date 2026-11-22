@@ -114,6 +114,7 @@
 
 - [x] `backend/app/compliance/checker.py` — политика, cookie, формы, иностранные SDK.
 - [x] **Глубина A1–A3** (`docs/scan-depth-roadmap.md`): политика ч.4, техзаголовки, трекеры; формы/реквизиты; обход контактов и legal-URL; при баннере — раскрытие cookie (`cookie_policy_*`).
+- [x] **B0 security**: пассивные пробы типовых утечек (`.git`, `.env`, …) и mixed content на HTTPS-страницах.
 - [x] robots.txt + sitemap.xml в поиске политики.
 - [x] Привязка штрафов из справочника.
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.
