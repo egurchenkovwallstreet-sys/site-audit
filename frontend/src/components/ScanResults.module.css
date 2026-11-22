@@ -41,6 +41,46 @@
   margin-bottom: calc(1rem * var(--ui));
 }
 
+.countdownBlock {
+  margin-bottom: calc(1.25rem * var(--ui));
+  padding: calc(1.15rem * var(--ui)) calc(1.25rem * var(--ui));
+  border-radius: calc(14px * var(--ui));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  text-align: center;
+}
+
+.countdownLabel {
+  margin: 0 0 calc(0.35rem * var(--ui));
+  font-size: calc(0.82rem * var(--ui));
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.countdownValue {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: calc(0.15rem * var(--ui));
+  line-height: 1;
+}
+
+.countdownNumber {
+  font-size: calc(2.75rem * var(--ui));
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--text);
+}
+
+.countdownUnit {
+  font-size: calc(1rem * var(--ui));
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 .loader {
   width: 100%;
   height: calc(4px * var(--ui));

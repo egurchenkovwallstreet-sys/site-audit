@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ScanResults.module.css";
 import {
   resolveRiskColor,
@@ -57,6 +57,74 @@ const STEPS = [
   "Проверяем требования 152-ФЗ",
   "Оцениваем технические риски",
 ] as const;
+
+/** Оценка длительности (реальное время зависит от сайта и антибота). */
+const ESTIMATE_PENDING_MS = 18_000;
+const ESTIMATE_RUNNING_MS = 72_000;
+
+function formatCountdownTenths(remainingMs: number): string {
+  const totalSec = Math.max(0, remainingMs) / 1000;
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = Math.floor(totalSec % 60);
+  const tenths = Math.floor((totalSec * 10) % 10);
+  if (minutes > 0) {
+    return `${minutes}:${seconds.toString().padStart(2, "0")}.${tenths}`;
+  }
+  return `${seconds}.${tenths}`;
+}
+
+function useScanCountdown(
+  scanId: number,
+  busy: boolean,
+  status: string | undefined,
+) {
+  const deadlineRef = useRef<number | null>(null);
+  const wasRunningRef = useRef(false);
+  const [remainingMs, setRemainingMs] = useState(ESTIMATE_RUNNING_MS);
+  const [finishing, setFinishing] = useState(false);
+
+  useEffect(() => {
+    deadlineRef.current = null;
+    wasRunningRef.current = false;
+    setFinishing(false);
+    setRemainingMs(ESTIMATE_PENDING_MS);
+  }, [scanId]);
+
+  useEffect(() => {
+    if (!busy) {
+      setRemainingMs(0);
+      return;
+    }
+
+    const now = Date.now();
+    if (deadlineRef.current === null) {
+      deadlineRef.current =
+        now + (status === "running" ? ESTIMATE_RUNNING_MS : ESTIMATE_PENDING_MS);
+    }
+
+    if (status === "running" && !wasRunningRef.current) {
+      wasRunningRef.current = true;
+      const left = (deadlineRef.current ?? now) - now;
+      if (left < ESTIMATE_RUNNING_MS * 0.55) {
+        deadlineRef.current = now + ESTIMATE_RUNNING_MS;
+        setFinishing(false);
+      }
+    }
+
+    const tick = () => {
+      const end = deadlineRef.current ?? Date.now();
+      const left = end - Date.now();
+      setRemainingMs(Math.max(0, left));
+      setFinishing(left <= 0);
+    };
+
+    tick();
+    const id = window.setInterval(tick, 100);
+    return () => window.clearInterval(id);
+  }, [busy, status]);
+
+  return { remainingMs, finishing };
+}
 
 const RISK_ITEM_CLASS: Record<RiskColor, string> = {
   red: styles.itemRed,
@@ -230,6 +298,11 @@ export function ScanResults({
   }, [scanId]);
 
   const busy = !scan || scan.status === "pending" || scan.status === "running";
+  const { remainingMs, finishing } = useScanCountdown(
+    scanId,
+    busy,
+    scan?.status,
+  );
 
   const { complianceFindings, breachFindings, accessFindings, riskSummary } =
     useMemo(() => {
@@ -286,6 +359,21 @@ export function ScanResults({
       </p>
       {busy ? (
         <>
+          <div className={styles.countdownBlock} aria-live="polite">
+            <p className={styles.countdownLabel}>
+              {finishing
+                ? "Завершаем проверку на сервере…"
+                : "Примерно до результата"}
+            </p>
+            <p className={styles.countdownValue}>
+              <span className={styles.countdownNumber}>
+                {formatCountdownTenths(remainingMs)}
+              </span>
+              <span className={styles.countdownUnit}>
+                {remainingMs >= 60_000 ? " мин" : " сек"}
+              </span>
+            </p>
+          </div>
           <ol className={styles.steps}>
             {STEPS.map((label, index) => (
               <li
