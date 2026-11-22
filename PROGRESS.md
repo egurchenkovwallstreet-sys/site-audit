@@ -85,7 +85,7 @@
 - [x] Расширение `regression_urls.json`: beautysova, avito, attik, neverssl (HTTP); полный прогон compliance+security.
 - [x] `scripts/vps-regression.sh` — регрессия в backend-контейнере на VPS.
 - [x] Содержательная проверка политики (ч.4 ст. 18.1) — `privacy_policy_incomplete` (волна A1).
-- [ ] Прогон полной регрессии на VPS после каждого крупного релиза (вручную/по расписанию).
+- [x] VPS 2025-11-22: Darom, okno, attik, cian — OK через `vps-regression.sh` (полный набор — по `deploy-workflow.md`).
 
 ---
 
