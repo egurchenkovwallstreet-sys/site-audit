@@ -10,11 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import validate_target_url
-from app.compliance.penalty_totals import sum_breach_penalties, sum_compliance_penalties
-from app.config import get_settings
 from app.db.session import async_session_factory, get_db
 from app.models.entities import Finding, Scan, ScanStatus
-from app.outreach.email_preview import build_outreach_email_text
+from app.services.outreach_message import (
+    compose_outreach_letter,
+    outreach_delivery_meta,
+)
 from app.services.scan_runner import run_compliance_scan
 from app.services.smtp_send import (
     SmtpDeliveryError,
@@ -63,6 +64,15 @@ class SendPreviewEmailResponse(BaseModel):
     ok: bool
     to: str
     subject: str
+    test_inbox_url: str | None = None
+
+
+class OutreachEmailPreviewResponse(BaseModel):
+    to: str
+    subject: str
+    body: str
+    can_send: bool
+    test_inbox_url: str | None = None
 
 
 class FindingResponse(BaseModel):
@@ -163,6 +173,29 @@ async def get_scan_findings(
     ]
 
 
+async def _scan_findings(session: AsyncSession, scan_id: int) -> list[Finding]:
+    result = await session.execute(
+        select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.id)
+    )
+    return list(result.scalars().all())
+
+
+def _validate_outreach_recipient(scan: Scan, to_email: str) -> str:
+    if scan.status != ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Доступно только после завершения проверки.",
+        )
+    allowed = _contact_emails_from_scan(scan)
+    to_norm = to_email.strip().lower()
+    if to_norm not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail="Можно только на адрес из списка найденных на сайте.",
+        )
+    return to_norm
+
+
 def _contact_emails_from_scan(scan: Scan) -> list[str]:
     if not scan.context_json:
         return []
@@ -174,6 +207,28 @@ def _contact_emails_from_scan(scan: Scan) -> list[str]:
         return []
 
 
+@router.get("/{scan_id}/outreach-email-preview", response_model=OutreachEmailPreviewResponse)
+async def outreach_email_preview(
+    scan_id: int,
+    to_email: EmailStr,
+    session: AsyncSession = Depends(get_db),
+) -> OutreachEmailPreviewResponse:
+    scan = await session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Скан не найден")
+    to_norm = _validate_outreach_recipient(scan, str(to_email))
+    findings = await _scan_findings(session, scan_id)
+    subject, body = compose_outreach_letter(scan, findings)
+    meta = outreach_delivery_meta()
+    return OutreachEmailPreviewResponse(
+        to=to_norm,
+        subject=subject,
+        body=body,
+        can_send=bool(meta["can_send"]),
+        test_inbox_url=meta.get("test_inbox_url"),  # type: ignore[arg-type]
+    )
+
+
 @router.post("/{scan_id}/send-preview-email", response_model=SendPreviewEmailResponse)
 async def send_preview_email(
     scan_id: int,
@@ -183,25 +238,13 @@ async def send_preview_email(
     if not smtp_is_configured():
         raise HTTPException(
             status_code=503,
-            detail="Отправка не настроена: укажите SMTP_HOST, SMTP_USER и SMTP_PASSWORD в .env на сервере.",
+            detail="Отправка не настроена: включите Mailpit или SMTP (см. docs/smtp-setup.md).",
         )
 
     scan = await session.get(Scan, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail="Скан не найден")
-    if scan.status != ScanStatus.COMPLETED.value:
-        raise HTTPException(
-            status_code=409,
-            detail="Письмо можно отправить только после завершения проверки.",
-        )
-
-    allowed = _contact_emails_from_scan(scan)
-    to_norm = body.to_email.strip().lower()
-    if to_norm not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail="Можно отправить только на адрес из списка найденных на сайте.",
-        )
+    to_norm = _validate_outreach_recipient(scan, str(body.to_email))
 
     now = time.monotonic()
     last = _last_preview_send_at.get(scan_id, 0.0)
@@ -211,24 +254,8 @@ async def send_preview_email(
             detail="Подождите минуту перед повторной отправкой с этого скана.",
         )
 
-    result = await session.execute(select(Finding).where(Finding.scan_id == scan_id))
-    findings = result.scalars().all()
-    compliance_total = sum_compliance_penalties(findings)
-    breach_total = sum_breach_penalties(findings)
-
-    settings = get_settings()
-    landing = settings.public_site_url.rstrip("/")
-    if "?" in landing:
-        landing += "&utm_source=outreach&utm_medium=email"
-    else:
-        landing += "/?utm_source=outreach&utm_medium=email"
-
-    subject, text_body = build_outreach_email_text(
-        target_url=scan.target_url,
-        compliance_total=compliance_total,
-        breach_total=breach_total,
-        landing_url=landing,
-    )
+    findings = await _scan_findings(session, scan_id)
+    subject, text_body = compose_outreach_letter(scan, findings)
 
     message = EmailMessage()
     message["Subject"] = subject
@@ -246,4 +273,11 @@ async def send_preview_email(
         ) from exc
 
     _last_preview_send_at[scan_id] = now
-    return SendPreviewEmailResponse(ok=True, to=to_norm, subject=subject)
+    meta = outreach_delivery_meta()
+    inbox = meta.get("test_inbox_url")
+    return SendPreviewEmailResponse(
+        ok=True,
+        to=to_norm,
+        subject=subject,
+        test_inbox_url=inbox if isinstance(inbox, str) else None,
+    )

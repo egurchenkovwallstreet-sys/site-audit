@@ -3,5 +3,6 @@
 set -euo pipefail
 cd /root/apps/site-audit
 git pull
-docker compose -f docker-compose.yml -f deploy/docker-compose.witty.yml up -d --build db backend frontend
+bash scripts/ensure-mailpit-on-server.sh
+docker compose -f docker-compose.yml -f deploy/docker-compose.witty.yml up -d --build db mailpit backend frontend
 docker compose -f docker-compose.yml -f deploy/docker-compose.witty.yml ps

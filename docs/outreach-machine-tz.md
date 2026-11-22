@@ -133,7 +133,7 @@
 - [x] UI: у каждого адреса в блоке «E-mail на сайте» кнопка **«Отправить письмо»**.
 - [x] API: `POST /api/scans/{id}/send-preview-email` `{ "to_email": "..." }` — тот же шаблон §5.4, суммы из findings скана.
 - [x] Отправка только на адреса из `contact_emails` этого скана; cooldown 90 с.
-- [x] SMTP: `docs/smtp-setup.md`, переменные в `.env` (на проде настраивает заказчик).
+- [x] SMTP: `docs/smtp-setup.md`; **тест без ящика** — Mailpit на `:8081`, `SMTP_ALLOW_UNAUTHENTICATED`.
 
 ---
 

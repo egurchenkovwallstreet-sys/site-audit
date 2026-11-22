@@ -10,6 +10,10 @@ services:
     ports:
       - "127.0.0.1:3001:3000"
 
+  mailpit:
+    ports:
+      - "127.0.0.1:8025:8025"
+
   caddy:
     profiles:
       - disabled-on-witty

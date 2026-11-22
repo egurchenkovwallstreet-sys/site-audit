@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     smtp_use_ssl: bool = False
     smtp_starttls: bool = True
+    smtp_allow_unauthenticated: bool = False
+
+    # Веб-интерфейс Mailpit на проде (тест без реального SMTP)
+    mailpit_public_url: str = ""
 
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

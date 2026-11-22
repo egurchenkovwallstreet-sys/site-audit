@@ -280,6 +280,47 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
 function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [inboxUrl, setInboxUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{
+    subject: string;
+    body: string;
+    testInboxUrl: string | null;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  async function showPreview() {
+    setPreviewLoading(true);
+    setErrorText(null);
+    try {
+      const q = encodeURIComponent(email);
+      const res = await fetch(
+        `/api/scans/${scanId}/outreach-email-preview?to_email=${q}`,
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        detail?: string;
+        subject?: string;
+        body?: string;
+        test_inbox_url?: string | null;
+      };
+      if (!res.ok || !data.subject || !data.body) {
+        setErrorText(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Не удалось загрузить текст письма",
+        );
+        return;
+      }
+      setPreview({
+        subject: data.subject,
+        body: data.body,
+        testInboxUrl: data.test_inbox_url ?? null,
+      });
+    } catch {
+      setErrorText("Сеть недоступна");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function sendLetter() {
     if (state === "sending") return;
@@ -293,6 +334,7 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
       });
       const data = (await res.json().catch(() => ({}))) as {
         detail?: string;
+        test_inbox_url?: string | null;
       };
       if (!res.ok) {
         setState("error");
@@ -303,6 +345,7 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
         );
         return;
       }
+      setInboxUrl(data.test_inbox_url ?? null);
       setState("sent");
     } catch {
       setState("error");
@@ -315,25 +358,67 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
       <a className={styles.emailLink} href={`mailto:${email}`}>
         {email}
       </a>
-      <button
-        type="button"
-        className={styles.emailSendBtn}
-        disabled={state === "sending" || state === "sent"}
-        onClick={sendLetter}
-      >
-        {state === "sending"
-          ? "Отправляем…"
-          : state === "sent"
-            ? "Отправлено"
-            : "Отправить письмо"}
-      </button>
+      <div className={styles.emailActions}>
+        <button
+          type="button"
+          className={styles.emailPreviewBtn}
+          disabled={previewLoading}
+          onClick={showPreview}
+        >
+          {previewLoading ? "Загрузка…" : "Текст письма"}
+        </button>
+        <button
+          type="button"
+          className={styles.emailSendBtn}
+          disabled={state === "sending" || state === "sent"}
+          onClick={sendLetter}
+        >
+          {state === "sending"
+            ? "Отправляем…"
+            : state === "sent"
+              ? "Отправлено"
+              : "Отправить письмо"}
+        </button>
+      </div>
+      {preview ? (
+        <div className={styles.emailPreviewBox}>
+          <p className={styles.emailPreviewSubject}>
+            <strong>Тема:</strong> {preview.subject}
+          </p>
+          <pre className={styles.emailPreviewBody}>{preview.body}</pre>
+          {preview.testInboxUrl ? (
+            <p className={styles.emailSendOk}>
+              Тест без ящика: после «Отправить» смотрите письмо в{" "}
+              <a
+                href={preview.testInboxUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                тестовом почтовом ящике
+              </a>
+              .
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {state === "error" && errorText ? (
         <p className={styles.emailSendError} role="alert">
           {errorText}
         </p>
       ) : null}
       {state === "sent" ? (
-        <p className={styles.emailSendOk}>Письмо ушло на {email}</p>
+        <p className={styles.emailSendOk}>
+          {inboxUrl ? (
+            <>
+              Письмо в тестовом ящике (на {email} в интернет не ушло) —{" "}
+              <a href={inboxUrl} target="_blank" rel="noopener noreferrer">
+                открыть Mailpit
+              </a>
+            </>
+          ) : (
+            <>Письмо отправлено на {email}</>
+          )}
+        </p>
       ) : null}
     </li>
   );
@@ -625,8 +710,9 @@ export function ScanResults({
               </h3>
               <p className={styles.sectionHint}>
                 Смотрим открытые страницы, при возможности — политику ПДн и
-                оферту (там часто указана почта оператора). Кнопка шлёт
-                черновик письма из будущей «машины уведомлений» (шаблон ТЗ).
+                оферту (там часто указана почта оператора). «Текст письма» —
+                без отправки. «Отправить» кладёт копию в тестовый ящик Mailpit
+                (без своего SMTP); смотрите ссылку после отправки.
               </p>
               {scan.context?.contact_emails &&
               scan.context.contact_emails.length > 0 ? (

@@ -1,27 +1,53 @@
-# SMTP для тестовой отправки с экрана скана
+# Почта: тест без ящика (Mailpit) и боевая отправка
 
-Кнопка **«Отправить письмо»** вызывает `POST /api/scans/{id}/send-preview-email` и шлёт текст по шаблону **`docs/outreach-machine-tz.md` §5.4** на адрес из найденных на сайте.
+## 1. Тест без SMTP и без пароля (сейчас на проде)
 
-## Переменные в `.env` (на сервере)
+На VPS поднят **Mailpit** — письма **не уходят в интернет**, а попадают в тестовый ящик.
+
+1. После скана нажмите **«Текст письма»** — увидите тему и тело без отправки.
+2. **«Отправить письмо»** — копия в Mailpit (получатель как на сайте, но доставка только «внутри» сервера).
+3. Откройте тестовый ящик: **http://194.87.220.206:8081**
+
+Переменные в `.env` на сервере (уже можно так настроить):
 
 ```env
+SMTP_HOST=mailpit
+SMTP_PORT=1025
+SMTP_USE_SSL=false
+SMTP_STARTTLS=false
+SMTP_ALLOW_UNAUTHENTICATED=true
+SMTP_FROM=site-audit@test.local
+MAILPIT_PUBLIC_URL=http://194.87.220.206:8081
 PUBLIC_SITE_URL=http://194.87.220.206:8080
+```
 
+После правки: `bash scripts/remote-redeploy.sh`.
+
+Nginx для порта **8081**: файл `deploy/nginx-site-audit.conf` (блок Mailpit). На сервере:
+
+```bash
+cp /root/apps/site-audit/deploy/nginx-site-audit.conf /etc/nginx/sites-available/site-audit
+nginx -t && systemctl reload nginx
+```
+
+## 2. Реальная доставка (когда будет ящик)
+
+Яндекс / свой SMTP:
+
+```env
 SMTP_HOST=smtp.yandex.ru
 SMTP_PORT=465
 SMTP_USE_SSL=true
 SMTP_STARTTLS=false
+SMTP_ALLOW_UNAUTHENTICATED=false
 SMTP_USER=ваш_ящик@yandex.ru
 SMTP_PASSWORD=пароль_приложения
 SMTP_FROM=ваш_ящик@yandex.ru
 ```
 
-После правки `.env`: `bash scripts/remote-redeploy.sh` (пересоздаёт backend с новым env).
+Mailpit можно оставить для тестов; для боя достаточно сменить `SMTP_*` и выключить `SMTP_ALLOW_UNAUTHENTICATED`.
 
-Пароль — **пароль приложения** почты, не основной пароль аккаунта.
+## API
 
-## Ограничения
-
-- Только на адреса из `context.contact_emails` этого скана.
-- Не чаще 1 раза в 90 секунд на один `scan_id`.
-- Без SMTP — ответ **503** с подсказкой.
+- `GET /api/scans/{id}/outreach-email-preview?to_email=...` — только текст.
+- `POST /api/scans/{id}/send-preview-email` — отправка (Mailpit или SMTP).
