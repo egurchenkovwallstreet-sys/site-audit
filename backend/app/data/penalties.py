@@ -50,10 +50,18 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
     "written_consent_violation": PenaltyEntry(
         code="written_consent_violation",
         title="Нарушение требований к письменному согласию",
-        legal_article="ст. 13.11 КоАП РФ ч.2",
+        legal_article="152-ФЗ ст. 9 ч. 2; ст. 13.11 КоАП РФ ч. 2",
         max_penalty=700_000,
         severity="high",
-        remediation="Приведите текст согласия и порядок фиксации в соответствие с 152-ФЗ.",
+        remediation="У чекбокса: явная ссылка на обработку ПДн и политику (цели, отзыв согласия).",
+    ),
+    "operator_requisites_not_found": PenaltyEntry(
+        code="operator_requisites_not_found",
+        title="Реквизиты оператора не найдены на сайте",
+        legal_article="152-ФЗ ст. 18.1 ч. 4; ст. 13.11 КоАП РФ ч. 4",
+        max_penalty=60_000,
+        severity="medium",
+        remediation="Укажите на сайте (оферта, контакты, политика): наименование, ИНН или ОГРН/ОГРНИП.",
     ),
     "no_subject_info": PenaltyEntry(
         code="no_subject_info",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
 from bs4 import BeautifulSoup
@@ -270,6 +271,81 @@ def _form_has_consent_checkbox(form: Tag) -> bool:
     ):
         return True
     return False
+
+
+CONSENT_QUALITY_MARKERS = (
+    "персональн",
+    "152",
+    "пдн",
+    "обработк",
+    "политик",
+    "конфиденциальн",
+    "privacy",
+    "personal data",
+    "согласие на",
+    "даю соглас",
+)
+
+
+def _consent_checkbox_label_text(checkbox: Tag) -> str:
+    parts: list[str] = []
+    cid = checkbox.get("id")
+    if cid:
+        soup_root = checkbox.find_parent("html") or checkbox
+        for label in soup_root.find_all("label"):
+            if label.get("for", "").lower() == str(cid).lower():
+                parts.append(label.get_text(" ", strip=True))
+    parent = checkbox.parent
+    for _ in range(4):
+        if parent is None:
+            break
+        parts.append(parent.get_text(" ", strip=True))
+        parent = parent.parent
+    return " ".join(parts)
+
+
+def consent_label_is_adequate(text: str) -> bool:
+    low = text.lower()
+    compact = re.sub(r"\s+", " ", low).strip()
+    if len(compact) < 14:
+        return False
+    return any(marker in compact for marker in CONSENT_QUALITY_MARKERS)
+
+
+def _iter_pdn_forms(html: str):
+    soup = BeautifulSoup(html, "html.parser")
+    for form in soup.find_all("form"):
+        inputs = form.find_all("input")
+        has_submit = any(
+            t.get("type", "").lower() in ("submit", "button") or t.name == "button"
+            for t in inputs
+        )
+        if not has_submit and not form.find("button"):
+            continue
+        if not form_likely_collects_personal_data(form):
+            continue
+        yield form
+
+
+def forms_with_weak_pdn_consent(html: str) -> list[str]:
+    """Чекбокс есть, но текст не отсылает к ПДн/политике."""
+    weak: list[str] = []
+    for form in _iter_pdn_forms(html):
+        if not _form_has_consent_checkbox(form):
+            continue
+        inadequate = False
+        for inp in form.find_all("input"):
+            if inp.get("type", "").lower() != "checkbox":
+                continue
+            label_text = _consent_checkbox_label_text(inp)
+            if not consent_label_is_adequate(label_text):
+                inadequate = True
+                break
+        if inadequate:
+            action = form.get("action") or "(текущая страница)"
+            if action not in weak:
+                weak.append(action)
+    return weak
 
 
 def _pdn_field_signature(form: Tag) -> tuple[tuple[str, str], ...]:

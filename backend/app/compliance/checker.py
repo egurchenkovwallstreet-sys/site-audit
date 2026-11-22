@@ -18,7 +18,11 @@ from app.compliance.privacy_detection import (
     privacy_urls_from_robots,
     privacy_urls_from_sitemap,
 )
-from app.compliance.form_consent import forms_missing_pdn_consent
+from app.compliance.form_consent import (
+    forms_missing_pdn_consent,
+    forms_with_weak_pdn_consent,
+)
+from app.compliance.legal_operator import site_has_operator_requisites
 from app.compliance.policy_content import (
     analyze_privacy_policy_text,
     extract_policy_text_from_scan,
@@ -161,6 +165,8 @@ def run_compliance_checks_site(
     foreign: set[str] = set()
     form_actions: list[str] = []
     form_seen: set[str] = set()
+    weak_consent: list[str] = []
+    weak_seen: set[str] = set()
 
     for _, html in pages:
         tracking.update(detect_measurable_tracking(html))
@@ -169,6 +175,10 @@ def run_compliance_checks_site(
             if action not in form_seen:
                 form_seen.add(action)
                 form_actions.append(action)
+        for action in forms_with_weak_pdn_consent(html):
+            if action not in weak_seen:
+                weak_seen.add(action)
+                weak_consent.append(action)
 
     tracking_list = sorted(tracking)
     foreign_list = sorted(foreign)
@@ -214,6 +224,41 @@ def run_compliance_checks_site(
                     f"Пример: {form_actions[0]}."
                 ),
                 severity="high",
+            )
+        )
+
+    if weak_consent:
+        findings.append(
+            RawFinding(
+                penalty_code="written_consent_violation",
+                title="Формальное согласие: текст чекбокса неинформативен",
+                description=(
+                    format_finding_preamble("written_consent_violation")
+                    + f"Чекбокс есть, но нет явной отсылки к обработке ПДн или политике "
+                    f"(форм: {len(weak_consent)}). Пример action: {weak_consent[0]}."
+                ),
+                severity="medium",
+            )
+        )
+
+    readable_substance = any(len((html or "")) > 500 for _, html in pages)
+    collects_pdn = bool(form_actions or weak_consent)
+    if (
+        readable_substance
+        and (collects_pdn or privacy_found)
+        and not site_has_operator_requisites(pages)
+    ):
+        findings.append(
+            RawFinding(
+                penalty_code="operator_requisites_not_found",
+                title="Реквизиты оператора не найдены на прочитанных страницах",
+                description=(
+                    format_finding_preamble("operator_requisites_not_found")
+                    + "При сборе ПДн или опубликованной политике на сайте не найдены "
+                    "ИНН, ОГРН/ОГРНИП или явное наименование юрлица/ИП среди "
+                    f"проверенных {page_count} страниц (в т.ч. типовые /offer, /rekvizity)."
+                ),
+                severity="medium",
             )
         )
 

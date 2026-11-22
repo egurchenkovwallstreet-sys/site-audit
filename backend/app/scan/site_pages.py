@@ -38,6 +38,15 @@ LEGAL_SEED_PATHS = (
     "/privacy-policy",
     "/politika-konfidencialnosti",
     "/about/privacy",
+    "/offer",
+    "/public-offer",
+    "/public_offer",
+    "/oferta",
+    "/dogovor-oferty",
+    "/dogovor",
+    "/requisites",
+    "/rekvizity",
+    "/company",
 )
 
 LINK_PRIORITY_HINTS = (
