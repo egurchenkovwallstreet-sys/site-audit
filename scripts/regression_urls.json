@@ -20,5 +20,13 @@
     "expect": {
       "absent_penalty_codes": ["processing_without_consent"]
     }
+  },
+  {
+    "name": "cian.ru antibot policy",
+    "url": "https://www.cian.ru/",
+    "expect": {
+      "privacy_found": true,
+      "absent_penalty_codes": ["no_privacy_policy"]
+    }
   }
 ]

@@ -28,6 +28,7 @@ from app.compliance.tracking_scripts import (
 from app.data.penalties import get_penalty, penalty_color
 from app.scan.access_findings import blocked_scan_finding
 from app.scan.fetch import fetch_target_page
+from app.scan.playwright_fetch import PlaywrightFetchBudget, fetch_target_page_smart
 from app.scan.site_scan import fetch_scan_site
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
@@ -72,6 +73,7 @@ async def _locate_privacy_policy(
     *,
     spa: SpaBundleScan,
     extra_pages: list[tuple[str, str]] | None = None,
+    browser_budget: PlaywrightFetchBudget | None = None,
 ) -> tuple[bool, str | None]:
     pages = [(page_url, html), *(extra_pages or [])]
 
@@ -102,11 +104,12 @@ async def _locate_privacy_policy(
         )
 
     for candidate in candidates[:MAX_EXTRA_FETCHES]:
-        fetched = await fetch_target_page(candidate)
+        fetched = await fetch_target_page_smart(candidate, browser_budget)
         if not fetched.html:
             continue
         if _page_content_is_privacy_policy(fetched.html):
-            return True, f"Документ на странице: {candidate}"
+            src = " (браузер)" if candidate in (browser_budget.used_urls if browser_budget else []) else ""
+            return True, f"Документ на странице{src}: {candidate}"
         if antibot_confirms_policy_url(candidate, fetched.html):
             return True, (
                 f"URL политики подтверждён (антибот, текст не прочитан): {candidate}"
@@ -260,6 +263,7 @@ def compliance_context_dict(
     tried_urls: list[str] | None = None,
     scanned_urls: list[str] | None = None,
     pages_checked: int | None = None,
+    playwright_urls: list[str] | None = None,
 ) -> dict[str, Any]:
     scope = CHECK_SCOPE_NOTE
     if used_fallback and scanned_url and requested_url:
@@ -287,6 +291,8 @@ def compliance_context_dict(
         ctx["scanned_urls"] = scanned_urls
     if pages_checked is not None:
         ctx["pages_checked"] = pages_checked
+    if playwright_urls:
+        ctx["playwright_urls"] = playwright_urls
     return ctx
 
 
@@ -328,7 +334,11 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
     extra_pages = [(u, h) for u, h in page_pairs if u.rstrip("/") != page_url.rstrip("/")]
     spa = await analyze_spa_bundles(page_url, html)
     privacy_found, privacy_source = await _locate_privacy_policy(
-        page_url, html, spa=spa, extra_pages=extra_pages
+        page_url,
+        html,
+        spa=spa,
+        extra_pages=extra_pages,
+        browser_budget=bundle.browser_budget,
     )
 
     consent_found = spa.consent_found or any(
@@ -367,5 +377,6 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
         tried_urls=entry.tried_urls,
         scanned_urls=scanned_urls,
         pages_checked=len(scanned_urls),
+        playwright_urls=bundle.browser_budget.used_urls or None,
     )
     return findings, ctx

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.scan.playwright_fetch import PlaywrightFetchBudget
 from urllib.parse import urljoin, urlparse
 
 from app.scan.fetch import PageFetchResult, fetch_target_page
@@ -45,6 +49,7 @@ class ScanPageFetch:
     result: PageFetchResult
     tried_urls: list[str] = field(default_factory=list)
     used_fallback: bool = False
+    used_playwright: bool = False
 
     @property
     def html(self) -> str | None:
@@ -120,7 +125,11 @@ def _fallback_urls(requested: str) -> list[str]:
     return urls
 
 
-async def fetch_for_scan(requested_url: str) -> ScanPageFetch:
+async def fetch_for_scan(
+    requested_url: str,
+    *,
+    budget: PlaywrightFetchBudget | None = None,
+) -> ScanPageFetch:
     tried: list[str] = [requested_url]
     primary = await fetch_target_page(requested_url)
 
@@ -143,6 +152,23 @@ async def fetch_for_scan(requested_url: str) -> ScanPageFetch:
                 tried_urls=tried,
                 used_fallback=True,
             )
+
+    if budget is not None and budget.enabled:
+        from app.scan.playwright_fetch import fetch_target_page_smart
+
+        for candidate in (requested_url, *_fallback_urls(requested_url)):
+            tried.append(candidate)
+            smart = await fetch_target_page_smart(candidate, budget)
+            if page_is_readable(smart.html, smart.status_code):
+                return ScanPageFetch(
+                    requested_url=requested_url,
+                    fetched_url=candidate,
+                    result=smart,
+                    tried_urls=tried,
+                    used_fallback=candidate.rstrip("/")
+                    != requested_url.rstrip("/"),
+                    used_playwright=True,
+                )
 
     return ScanPageFetch(
         requested_url=requested_url,

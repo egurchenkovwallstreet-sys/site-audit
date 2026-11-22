@@ -7,3 +7,4 @@ psycopg[binary]==3.2.3
 alembic==1.14.0
 pydantic-settings==2.7.0
 beautifulsoup4==4.12.3
+playwright==1.49.1
