@@ -20,11 +20,16 @@ def _penalty_codes(findings: list[dict]) -> set[str]:
     for row in findings:
         if row.get("type") != "compliance":
             continue
+        if row.get("penalty_code"):
+            codes.add(str(row["penalty_code"]))
+            continue
         for code in (
             "no_privacy_policy",
             "no_cookie_banner",
             "processing_without_consent",
             "foreign_sdk_transfer",
+            "cookie_policy_not_disclosed",
+            "cookie_policy_incomplete",
         ):
             penalty = get_penalty(code)
             if penalty and row.get("title") == penalty.title:

@@ -23,6 +23,11 @@ from app.compliance.form_consent import (
     forms_with_weak_pdn_consent,
 )
 from app.compliance.legal_operator import site_has_operator_requisites
+from app.compliance.cookie_policy_content import (
+    analyze_cookie_policy_text,
+    extract_cookie_policy_text,
+    privacy_policy_covers_cookies,
+)
 from app.compliance.policy_content import (
     analyze_privacy_policy_text,
     extract_policy_text_from_scan,
@@ -182,6 +187,10 @@ def run_compliance_checks_site(
 
     tracking_list = sorted(tracking)
     foreign_list = sorted(foreign)
+    readable_substance = any(len((html or "")) > 500 for _, html in pages)
+    policy_covers_cookies = bool(
+        policy_text and privacy_policy_covers_cookies(policy_text)
+    )
 
     if not privacy_found:
         findings.append(
@@ -197,6 +206,46 @@ def run_compliance_checks_site(
                 severity="medium",
             )
         )
+
+    if (
+        tracking_list
+        and consent_markers_found
+        and readable_substance
+        and not policy_covers_cookies
+    ):
+        cookie_text, cookie_source = extract_cookie_policy_text(pages)
+        if not cookie_text:
+            findings.append(
+                RawFinding(
+                    penalty_code="cookie_policy_not_disclosed",
+                    title="При баннере нет раскрытия об аналитических cookie",
+                    description=(
+                        format_finding_preamble("cookie_policy_not_disclosed")
+                        + f"Подключена аналитика ({', '.join(tracking_list)}), "
+                        "механизм согласия виден, но отдельного или достаточного "
+                        f"описания cookie на {page_count} прочитанных страницах нет."
+                    ),
+                    severity="medium",
+                )
+            )
+        else:
+            cookie_review = analyze_cookie_policy_text(
+                cookie_text, source=cookie_source or "?"
+            )
+            if cookie_review.analyzed and len(cookie_review.missing_labels) >= 2:
+                findings.append(
+                    RawFinding(
+                        penalty_code="cookie_policy_incomplete",
+                        title="Описание cookie неполное",
+                        description=(
+                            format_finding_preamble("cookie_policy_incomplete")
+                            + f"Источник: {cookie_source}. "
+                            "Не найдены в тексте: "
+                            f"{', '.join(cookie_review.missing_labels)}."
+                        ),
+                        severity="medium",
+                    )
+                )
 
     if tracking_list and not consent_markers_found:
         findings.append(
@@ -241,7 +290,6 @@ def run_compliance_checks_site(
             )
         )
 
-    readable_substance = any(len((html or "")) > 500 for _, html in pages)
     collects_pdn = bool(form_actions or weak_consent)
     if (
         readable_substance
@@ -300,6 +348,7 @@ def enrich_finding(raw: RawFinding) -> dict:
     if entry is None:
         return {
             "type": "compliance",
+            "penalty_code": raw.penalty_code,
             "severity": raw.severity,
             "title": raw.title,
             "description": raw.description,
@@ -311,6 +360,7 @@ def enrich_finding(raw: RawFinding) -> dict:
         }
     return {
         "type": "compliance",
+        "penalty_code": raw.penalty_code,
         "severity": entry.severity,
         "title": raw.title,
         "description": raw.description,

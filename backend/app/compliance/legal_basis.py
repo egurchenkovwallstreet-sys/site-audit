@@ -34,6 +34,20 @@ LEGAL_BASES: dict[str, LegalBasis] = {
         on_site="При подключённой аналитике/рекламе — баннер или иной механизм согласия",
         fact_label="Аналитика/реклама есть, согласия на cookie не видно",
     ),
+    "cookie_policy_not_disclosed": LegalBasis(
+        penalty_code="cookie_policy_not_disclosed",
+        fz_152="152-ФЗ ст. 9 (информирование при согласии на обработку)",
+        koap="ст. 13.11 КоАП РФ ч. 1",
+        on_site="При баннере и аналитике — доступное описание cookie (страница или раздел политики)",
+        fact_label="Согласие есть, раскрытия об аналитических cookie на сайте не найдено",
+    ),
+    "cookie_policy_incomplete": LegalBasis(
+        penalty_code="cookie_policy_incomplete",
+        fz_152="152-ФЗ ст. 9 (содержание информации при согласии)",
+        koap="ст. 13.11 КоАП РФ ч. 1",
+        on_site="В тексте о cookie — виды, цели, способ отказа/управления",
+        fact_label="Описание cookie опубликовано, но не хватает обязательных блоков",
+    ),
     "foreign_sdk_transfer": LegalBasis(
         penalty_code="foreign_sdk_transfer",
         fz_152="152-ФЗ ст. 12 (трансграничная передача ПДн — нужны основания и ограничения)",

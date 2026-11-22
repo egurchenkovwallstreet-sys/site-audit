@@ -19,8 +19,8 @@
 | **A1** ✅ | Больше трекеров (VK, Mail.ru, Clarity, …) | ст. 12 / cookie |
 | **A2** ✅ | Качество текста согласия в формах | `written_consent_violation` |
 | **A2** ✅ | Реквизиты оператора на обходе (+/offer, /rekvizity) | `operator_requisites_not_found` |
-| **A2** | Контактные и юридические страницы в обход | меньше ложных «политики нет» |
-| **A3** | Полнота cookie policy при баннере | ст. 9 |
+| **A2** ✅ | Контактные и юридические страницы в обход | меньше ложных «политики нет» |
+| **A3** ✅ | Полнота cookie policy при баннере | `cookie_policy_not_disclosed` / `cookie_policy_incomplete` |
 | **B** | ZAP/Nuclei ограниченно | утечки, CVE |
 | **B** | GigaChat по тексту политики | сложные формулировки |
 

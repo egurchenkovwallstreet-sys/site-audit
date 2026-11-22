@@ -101,6 +101,28 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
             "по ст. 12 152-ФЗ (договор, согласие, оценка страны)."
         ),
     ),
+    "cookie_policy_not_disclosed": PenaltyEntry(
+        code="cookie_policy_not_disclosed",
+        title="При баннере нет раскрытия об аналитических cookie",
+        legal_article="152-ФЗ ст. 9; ст. 13.11 КоАП РФ ч. 1",
+        max_penalty=300_000,
+        severity="medium",
+        remediation=(
+            "Опубликуйте описание cookie (отдельно или в политике ПДн): "
+            "виды, цели аналитики, как отозвать согласие."
+        ),
+    ),
+    "cookie_policy_incomplete": PenaltyEntry(
+        code="cookie_policy_incomplete",
+        title="Описание cookie неполное",
+        legal_article="152-ФЗ ст. 9; ст. 13.11 КоАП РФ ч. 1",
+        max_penalty=80_000,
+        severity="medium",
+        remediation=(
+            "Дополните текст о cookie: для чего используются, какие бывают, "
+            "как отключить или отозвать согласие."
+        ),
+    ),
     "no_cookie_banner": PenaltyEntry(
         code="no_cookie_banner",
         title="Нет согласия при подключённой аналитике",

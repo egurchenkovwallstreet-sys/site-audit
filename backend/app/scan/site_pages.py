@@ -47,6 +47,22 @@ LEGAL_SEED_PATHS = (
     "/requisites",
     "/rekvizity",
     "/company",
+    "/contacts",
+    "/contact",
+    "/kontakty",
+    "/kontakt",
+    "/about",
+    "/about-us",
+    "/o-kompanii",
+    "/cookie-policy",
+    "/cookies",
+    "/cookie",
+    "/politika-cookie",
+    "/politika-ispolzovaniya-cookie",
+    "/terms",
+    "/terms-of-use",
+    "/user-agreement",
+    "/agreement",
 )
 
 LINK_PRIORITY_HINTS = (
