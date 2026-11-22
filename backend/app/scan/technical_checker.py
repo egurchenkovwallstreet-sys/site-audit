@@ -41,6 +41,7 @@ def _finding(
         "remediation": remediation,
     }
     if issue_key:
+        row["issue_key"] = issue_key
         row = apply_breach_penalty(row, issue_key)
     return row
 

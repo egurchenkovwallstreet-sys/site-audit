@@ -147,6 +147,7 @@ class Finding(Base):
     color: Mapped[str | None] = mapped_column(String(16), nullable=True)
     min_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     remediation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    penalty_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     scan: Mapped[Scan] = relationship(back_populates="findings")
 

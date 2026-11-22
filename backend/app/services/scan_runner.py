@@ -46,6 +46,7 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
                     color=row.get("color"),
                     min_level=row.get("min_level", 1),
                     remediation=row.get("remediation"),
+                    penalty_code=row.get("penalty_code") or row.get("issue_key"),
                 )
             )
         scan.status = ScanStatus.COMPLETED.value

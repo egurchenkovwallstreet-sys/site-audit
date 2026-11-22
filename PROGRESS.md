@@ -82,8 +82,10 @@
 
 - [x] Playwright для «пустых» SPA-оболочек и жёсткого антибота (полный текст политики, не только `back_location`).
 - [x] Cookie / Referrer-Policy / Set-Cookie флаги (Referrer-Policy, HttpOnly, SameSite, Secure).
-- [ ] Расширение `regression_urls.json`: ЦИАН (добавлен), Авито, attik, эталонный «плохой» сайт.
-- [ ] Содержательная проверка политики (ч.4 ст. 18.1): оператор, цели, права субъекта (после стабильного HTML).
+- [x] Расширение `regression_urls.json`: beautysova, avito, attik, neverssl (HTTP); полный прогон compliance+security.
+- [x] `scripts/vps-regression.sh` — регрессия в backend-контейнере на VPS.
+- [x] Содержательная проверка политики (ч.4 ст. 18.1) — `privacy_policy_incomplete` (волна A1).
+- [ ] Прогон полной регрессии на VPS после каждого крупного релиза (вручную/по расписанию).
 
 ---
 
@@ -103,6 +105,7 @@
 - [x] Миграция `context_json` для scans (`20251121_0002_scan_context.py`).
 - [x] Docker Compose с PostgreSQL на сервере.
 - [x] Проверено на VPS: `alembic upgrade` + `/api/health/db`.
+- [x] Миграция `findings.penalty_code` + API (стабильная регрессия по кодам).
 
 ## Шаг 3. Интеграция сканеров
 

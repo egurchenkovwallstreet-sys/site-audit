@@ -4,6 +4,7 @@
     "url": "https://darom-app.online/",
     "expect": {
       "privacy_found": true,
+      "min_pages_checked": 1,
       "absent_penalty_codes": ["no_privacy_policy", "no_cookie_banner"]
     }
   },
@@ -11,13 +12,15 @@
     "name": "example.com baseline",
     "url": "https://example.com/",
     "expect": {
-      "privacy_found": false
+      "privacy_found": false,
+      "min_pages_checked": 1
     }
   },
   {
     "name": "okno.ru no false form consent",
     "url": "https://okno.ru/",
     "expect": {
+      "min_pages_checked": 1,
       "absent_penalty_codes": ["processing_without_consent"]
     }
   },
@@ -34,6 +37,40 @@
     "url": "https://www.etagi.com/",
     "expect": {
       "absent_penalty_codes": ["no_privacy_policy"]
+    }
+  },
+  {
+    "name": "beautysova.ru retail",
+    "url": "https://beautysova.ru/",
+    "expect": {
+      "min_pages_checked": 1
+    }
+  },
+  {
+    "name": "avito.ru forms",
+    "url": "https://www.avito.ru/",
+    "expect": {
+      "absent_penalty_codes": ["processing_without_consent"]
+    }
+  },
+  {
+    "name": "attik.ru antibot honest",
+    "url": "https://attik.ru/",
+    "expect": {
+      "allow_antibot": true,
+      "max_pages_checked": 0,
+      "absent_penalty_codes": [
+        "no_privacy_policy",
+        "processing_without_consent",
+        "no_cookie_banner"
+      ]
+    }
+  },
+  {
+    "name": "HTTP no TLS (neverssl)",
+    "url": "http://neverssl.com/",
+    "expect": {
+      "required_issue_keys": ["http_no_tls"]
     }
   }
 ]

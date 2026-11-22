@@ -86,6 +86,7 @@ class FindingResponse(BaseModel):
     color: str | None
     min_level: int
     remediation: str | None
+    penalty_code: str | None = None
 
 
 async def _run_scan_task(scan_id: int) -> None:
@@ -168,6 +169,7 @@ async def get_scan_findings(
             color=f.color,
             min_level=f.min_level,
             remediation=f.remediation,
+            penalty_code=f.penalty_code,
         )
         for f in findings
     ]
