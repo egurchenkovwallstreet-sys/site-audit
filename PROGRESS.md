@@ -25,7 +25,7 @@
 - [x] Тест `backend/tests/test_privacy_detection.py`.
 - [x] Self-scan на VPS: политика не «найдена» по маркетингу; штраф «нет политики» на лендинге сервиса.
 - [x] okno.ru на VPS (API): политика на `/politika-konfidencialnosti`, факты по формам/SDK.
-- [ ] Полная регрессия `regression_scan.py` на VPS после всех правок.
+- [x] Полная регрессия `regression_scan.py` на VPS после всех правок.
 
 ### Итерация 1.5.1 — sitemap и крупные сайты (ЦИАН) (2025-11-22)
 
@@ -53,7 +53,7 @@
 
 - [x] Fallback `/contacts/`, `/contact/`, `/kontakty/` при 403/429/странице‑капче.
 - [x] В контексте скана: `requested_url`, `scanned_url`, `used_fallback`.
-- [ ] Прогон etagi.com на VPS (добавлен в `regression_urls.json`).
+- [x] Прогон etagi.com на VPS (регрессия, без ложного `no_privacy_policy`).
 
 ### Итерация 1.2 — привязка к нормам (2025-11-21)
 
@@ -76,7 +76,7 @@
 - [x] Fallback при антиботе: bootstrap по `back_location` + legal seeds; повтор для юр. URL без текста политики.
 - [x] Контекст: `playwright_urls`; тесты `test_playwright_integration.py`.
 - [x] VPS: cian.ru scan **#173** — `privacy_found`, ~31 с (браузерные попытки); текст политики с IP дата-центра по-прежнему не отдаётся — остаётся `back_location`.
-- [ ] Полная регрессия `regression_scan.py` на VPS (после фикса okno `accepts_the_licen`).
+- [x] Полная регрессия `regression_scan.py` на VPS (Darom, example, okno, cian, etagi — OK, ~3 мин).
 
 ### Итерация 2 (продолжение)
 
