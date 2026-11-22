@@ -80,4 +80,6 @@ npm run dev
 
 Выполненные и проверенные задачи отмечаются в [PROGRESS.md](PROGRESS.md).
 
+Продолжение в новом чате Cursor — скопируйте [docs/NEW_CHAT_PROMPT.md](docs/NEW_CHAT_PROMPT.md).
+
 План публикации на GitHub и деплоя — [docs/deployment.md](docs/deployment.md).
