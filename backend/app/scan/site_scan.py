@@ -75,7 +75,11 @@ async def _fetch_scanned_page(
         url, res.html
     )
     if needs_browser:
-        smart = await fetch_target_page_smart(url, budget)
+        smart = await fetch_target_page_smart(
+            url,
+            budget,
+            force_browser=_needs_browser_for_policy(url, res.html),
+        )
         if page_is_readable(smart.html, smart.status_code):
             better = (
                 not page_is_readable(res.html, res.status_code)

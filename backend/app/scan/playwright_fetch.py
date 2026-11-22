@@ -112,9 +112,14 @@ async def fetch_page_with_browser(url: str) -> PageFetchResult:
 async def fetch_target_page_smart(
     url: str,
     budget: PlaywrightFetchBudget | None,
+    *,
+    force_browser: bool = False,
 ) -> PageFetchResult:
     primary = await fetch_target_page(url)
-    if page_is_readable(primary.html, primary.status_code):
+    if (
+        not force_browser
+        and page_is_readable(primary.html, primary.status_code)
+    ):
         return primary
     if budget is None or not budget.enabled or budget.remaining <= 0:
         return primary
