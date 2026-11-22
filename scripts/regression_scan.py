@@ -8,8 +8,18 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+def _backend_dir() -> Path:
+    here = Path(__file__).resolve().parent
+    for root in (here.parent, Path("/app")):
+        backend = root / "backend" if root.name != "app" else root
+        if (backend / "app").is_dir():
+            return backend
+    return Path("/app")
+
+
+BACKEND = _backend_dir()
+ROOT = BACKEND.parent if BACKEND.name == "backend" else BACKEND.parent
+sys.path.insert(0, str(BACKEND))
 
 from app.compliance.checker import check_url_compliance  # noqa: E402
 from app.data.penalties import get_penalty  # noqa: E402
