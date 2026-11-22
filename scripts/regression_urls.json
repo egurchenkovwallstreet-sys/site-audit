@@ -67,8 +67,8 @@
     }
   },
   {
-    "name": "HTTP no TLS (neverssl)",
-    "url": "http://neverssl.com/",
+    "name": "HTTP no TLS (example http)",
+    "url": "http://example.com/",
     "expect": {
       "required_issue_keys": ["http_no_tls"]
     }
