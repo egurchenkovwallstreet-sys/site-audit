@@ -58,9 +58,16 @@ const STEPS = [
   "Оцениваем технические риски",
 ] as const;
 
-/** Оценка длительности (реальное время зависит от сайта и антибота). */
-const ESTIMATE_PENDING_MS = 18_000;
-const ESTIMATE_RUNNING_MS = 72_000;
+/** Верхняя оценка 3–5 мин (реальное время зависит от сайта). */
+const ESTIMATE_MIN_MS = 3 * 60 * 1000;
+const ESTIMATE_MAX_MS = 5 * 60 * 1000;
+const TICK_MS = 100;
+const COUNTDOWN_ZERO_MS = 45;
+
+function initialEstimateMs(scanId: number): number {
+  const spread = ESTIMATE_MAX_MS - ESTIMATE_MIN_MS;
+  return ESTIMATE_MIN_MS + ((scanId * 2_654_435_761) >>> 0) % spread;
+}
 
 function formatCountdownTenths(remainingMs: number): string {
   const totalSec = Math.max(0, remainingMs) / 1000;
@@ -75,55 +82,76 @@ function formatCountdownTenths(remainingMs: number): string {
 
 function useScanCountdown(
   scanId: number,
-  busy: boolean,
-  status: string | undefined,
+  active: boolean,
+  accelerating: boolean,
 ) {
   const deadlineRef = useRef<number | null>(null);
-  const wasRunningRef = useRef(false);
-  const [remainingMs, setRemainingMs] = useState(ESTIMATE_RUNNING_MS);
+  const remainingRef = useRef(initialEstimateMs(scanId));
+  const accelLambdaRef = useRef<number | null>(null);
+  const [remainingMs, setRemainingMs] = useState(() => initialEstimateMs(scanId));
   const [finishing, setFinishing] = useState(false);
+  const [zero, setZero] = useState(false);
 
   useEffect(() => {
-    deadlineRef.current = null;
-    wasRunningRef.current = false;
+    const est = initialEstimateMs(scanId);
+    deadlineRef.current = Date.now() + est;
+    remainingRef.current = est;
+    accelLambdaRef.current = null;
+    setRemainingMs(est);
     setFinishing(false);
-    setRemainingMs(ESTIMATE_PENDING_MS);
+    setZero(false);
   }, [scanId]);
 
   useEffect(() => {
-    if (!busy) {
-      setRemainingMs(0);
+    if (accelerating && accelLambdaRef.current === null) {
+      const r0 = Math.max(remainingRef.current, COUNTDOWN_ZERO_MS + 20);
+      const duration = Math.min(4_200, Math.max(1_400, r0 / 22));
+      accelLambdaRef.current = Math.log(r0 / COUNTDOWN_ZERO_MS) / duration;
+    }
+    if (!accelerating) {
+      accelLambdaRef.current = null;
+    }
+  }, [accelerating]);
+
+  useEffect(() => {
+    if (!active) {
       return;
     }
 
-    const now = Date.now();
-    if (deadlineRef.current === null) {
-      deadlineRef.current =
-        now + (status === "running" ? ESTIMATE_RUNNING_MS : ESTIMATE_PENDING_MS);
-    }
-
-    if (status === "running" && !wasRunningRef.current) {
-      wasRunningRef.current = true;
-      const left = (deadlineRef.current ?? now) - now;
-      if (left < ESTIMATE_RUNNING_MS * 0.55) {
-        deadlineRef.current = now + ESTIMATE_RUNNING_MS;
-        setFinishing(false);
-      }
-    }
-
     const tick = () => {
-      const end = deadlineRef.current ?? Date.now();
-      const left = end - Date.now();
-      setRemainingMs(Math.max(0, left));
-      setFinishing(left <= 0);
+      let left: number;
+      if (accelerating && accelLambdaRef.current !== null) {
+        const lambda = accelLambdaRef.current;
+        left = remainingRef.current * Math.exp((-lambda * TICK_MS) / 1);
+        if (left < COUNTDOWN_ZERO_MS) {
+          left = 0;
+          setZero(true);
+        }
+      } else {
+        const end = deadlineRef.current ?? Date.now();
+        left = Math.max(0, end - Date.now());
+        if (left <= 0) {
+          setZero(true);
+        }
+      }
+      remainingRef.current = left;
+      setRemainingMs(left);
+      setFinishing(left <= 0 && !accelerating);
     };
 
     tick();
-    const id = window.setInterval(tick, 100);
+    const id = window.setInterval(tick, TICK_MS);
     return () => window.clearInterval(id);
-  }, [busy, status]);
+  }, [active, accelerating]);
 
-  return { remainingMs, finishing };
+  useEffect(() => {
+    if (!active && !accelerating) {
+      remainingRef.current = 0;
+      setRemainingMs(0);
+    }
+  }, [active, accelerating]);
+
+  return { remainingMs, finishing, zero };
 }
 
 const RISK_ITEM_CLASS: Record<RiskColor, string> = {
@@ -261,6 +289,8 @@ export function ScanResults({
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [progressStep, setProgressStep] = useState(0);
+  const [accelerating, setAccelerating] = useState(false);
+  const [countdownSettled, setCountdownSettled] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -297,12 +327,45 @@ export function ScanResults({
     };
   }, [scanId]);
 
-  const busy = !scan || scan.status === "pending" || scan.status === "running";
-  const { remainingMs, finishing } = useScanCountdown(
+  useEffect(() => {
+    setAccelerating(false);
+    setCountdownSettled(false);
+  }, [scanId]);
+
+  const scanInFlight =
+    !scan || scan.status === "pending" || scan.status === "running";
+  const scanTerminal =
+    scan?.status === "completed" || scan?.status === "failed";
+
+  const countdownActive =
+    !countdownSettled && (scanInFlight || accelerating);
+
+  const { remainingMs, finishing, zero } = useScanCountdown(
     scanId,
-    busy,
-    scan?.status,
+    countdownActive,
+    accelerating,
   );
+
+  useEffect(() => {
+    if (!scanTerminal || countdownSettled || accelerating) {
+      return;
+    }
+    if (remainingMs > COUNTDOWN_ZERO_MS + 30) {
+      setAccelerating(true);
+    } else {
+      setCountdownSettled(true);
+    }
+  }, [scanTerminal, remainingMs, countdownSettled, accelerating]);
+
+  useEffect(() => {
+    if (zero && accelerating) {
+      setAccelerating(false);
+      setCountdownSettled(true);
+    }
+  }, [zero, accelerating]);
+
+  const busy = countdownActive;
+  const revealOutcome = scanTerminal && countdownSettled;
 
   const { complianceFindings, breachFindings, accessFindings, riskSummary } =
     useMemo(() => {
@@ -339,6 +402,7 @@ export function ScanResults({
 
   const complianceRan = (scan?.context?.pages_checked ?? 0) > 0;
   const complianceClean =
+    revealOutcome &&
     scan?.status === "completed" &&
     complianceRan &&
     complianceFindings.length === 0 &&
@@ -355,15 +419,21 @@ export function ScanResults({
       </div>
       <p className={styles.url}>{targetUrl}</p>
       <p className={styles.status}>
-        {scan ? (STATUS_TEXT[scan.status] ?? scan.status) : "Загрузка…"}
+        {accelerating && scan?.status === "completed"
+          ? "Проверка завершена — собираем отчёт…"
+          : scan
+            ? (STATUS_TEXT[scan.status] ?? scan.status)
+            : "Загрузка…"}
       </p>
       {busy ? (
         <>
           <div className={styles.countdownBlock} aria-live="polite">
             <p className={styles.countdownLabel}>
-              {finishing
-                ? "Завершаем проверку на сервере…"
-                : "Примерно до результата"}
+              {accelerating
+                ? "Ускоряем отсчёт — отчёт уже готов"
+                : finishing
+                  ? "Проверка может занять до 5 минут — ждём сервер…"
+                  : "Ориентир по времени (до 5 минут)"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>
@@ -393,21 +463,21 @@ export function ScanResults({
           </div>
         </>
       ) : null}
-      {accessFindings.length > 0 ? (
+      {revealOutcome && accessFindings.length > 0 ? (
         <div className={styles.accessBanner} role="status">
           <p className={styles.accessTitle}>{accessFindings[0].title}</p>
           <p className={styles.itemMeta}>{accessFindings[0].description}</p>
         </div>
       ) : null}
-      {scan?.status === "completed" && scan.context ? (
+      {revealOutcome && scan?.status === "completed" && scan.context ? (
         <CheckContextPanel context={scan.context} />
       ) : null}
-      {complianceClean ? (
+      {complianceClean && revealOutcome ? (
         <div className={styles.successBanner}>
           По 152-ФЗ на проверенной странице нарушений со штрафом не найдено.
         </div>
       ) : null}
-      {scan?.status === "completed" ? (
+      {revealOutcome && scan?.status === "completed" ? (
         noFindingsAtAll ? (
           <p className={styles.sectionEmpty}>
             Замечаний по 152-ФЗ и техническому прогнозу не найдено.
