@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     playwright_enabled: bool = True
     playwright_max_fetches: int = 8
 
+    public_site_url: str = "http://localhost:3000"
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_ssl: bool = False
+    smtp_starttls: bool = True
+
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

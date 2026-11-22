@@ -277,6 +277,68 @@ function CheckContextPanel({ context }: { context: ScanContext }) {
   );
 }
 
+function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorText, setErrorText] = useState<string | null>(null);
+
+  async function sendLetter() {
+    if (state === "sending") return;
+    setState("sending");
+    setErrorText(null);
+    try {
+      const res = await fetch(`/api/scans/${scanId}/send-preview-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_email: email }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        detail?: string;
+      };
+      if (!res.ok) {
+        setState("error");
+        setErrorText(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Не удалось отправить письмо",
+        );
+        return;
+      }
+      setState("sent");
+    } catch {
+      setState("error");
+      setErrorText("Сеть недоступна");
+    }
+  }
+
+  return (
+    <li className={styles.emailRow}>
+      <a className={styles.emailLink} href={`mailto:${email}`}>
+        {email}
+      </a>
+      <button
+        type="button"
+        className={styles.emailSendBtn}
+        disabled={state === "sending" || state === "sent"}
+        onClick={sendLetter}
+      >
+        {state === "sending"
+          ? "Отправляем…"
+          : state === "sent"
+            ? "Отправлено"
+            : "Отправить письмо"}
+      </button>
+      {state === "error" && errorText ? (
+        <p className={styles.emailSendError} role="alert">
+          {errorText}
+        </p>
+      ) : null}
+      {state === "sent" ? (
+        <p className={styles.emailSendOk}>Письмо ушло на {email}</p>
+      ) : null}
+    </li>
+  );
+}
+
 export function ScanResults({
   scanId,
   targetUrl,
@@ -563,17 +625,14 @@ export function ScanResults({
               </h3>
               <p className={styles.sectionHint}>
                 Смотрим открытые страницы, при возможности — политику ПДн и
-                оферту (там часто указана почта оператора).
+                оферту (там часто указана почта оператора). Кнопка шлёт
+                черновик письма из будущей «машины уведомлений» (шаблон ТЗ).
               </p>
               {scan.context?.contact_emails &&
               scan.context.contact_emails.length > 0 ? (
                 <ul className={styles.emailList}>
                   {scan.context.contact_emails.map((email) => (
-                    <li key={email}>
-                      <a className={styles.emailLink} href={`mailto:${email}`}>
-                        {email}
-                      </a>
-                    </li>
+                    <EmailSendRow key={email} scanId={scanId} email={email} />
                   ))}
                 </ul>
               ) : (

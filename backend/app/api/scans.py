@@ -1,18 +1,32 @@
 from __future__ import annotations
 
 import json
+import time
 
+from email.message import EmailMessage
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import validate_target_url
+from app.compliance.penalty_totals import sum_breach_penalties, sum_compliance_penalties
+from app.config import get_settings
 from app.db.session import async_session_factory, get_db
 from app.models.entities import Finding, Scan, ScanStatus
+from app.outreach.email_preview import build_outreach_email_text
 from app.services.scan_runner import run_compliance_scan
+from app.services.smtp_send import (
+    SmtpDeliveryError,
+    SmtpNotConfiguredError,
+    send_email_message,
+    smtp_is_configured,
+)
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+
+_SEND_PREVIEW_COOLDOWN_SEC = 90.0
+_last_preview_send_at: dict[int, float] = {}
 
 
 class ScanCreateRequest(BaseModel):
@@ -39,6 +53,16 @@ class ScanResponse(BaseModel):
     target_url: str
     status: str
     context: ScanContext | None = None
+
+
+class SendPreviewEmailRequest(BaseModel):
+    to_email: EmailStr
+
+
+class SendPreviewEmailResponse(BaseModel):
+    ok: bool
+    to: str
+    subject: str
 
 
 class FindingResponse(BaseModel):
@@ -137,3 +161,89 @@ async def get_scan_findings(
         )
         for f in findings
     ]
+
+
+def _contact_emails_from_scan(scan: Scan) -> list[str]:
+    if not scan.context_json:
+        return []
+    try:
+        raw = json.loads(scan.context_json)
+        emails = raw.get("contact_emails") or []
+        return [str(e).strip().lower() for e in emails if e]
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return []
+
+
+@router.post("/{scan_id}/send-preview-email", response_model=SendPreviewEmailResponse)
+async def send_preview_email(
+    scan_id: int,
+    body: SendPreviewEmailRequest,
+    session: AsyncSession = Depends(get_db),
+) -> SendPreviewEmailResponse:
+    if not smtp_is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Отправка не настроена: укажите SMTP_HOST, SMTP_USER и SMTP_PASSWORD в .env на сервере.",
+        )
+
+    scan = await session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Скан не найден")
+    if scan.status != ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Письмо можно отправить только после завершения проверки.",
+        )
+
+    allowed = _contact_emails_from_scan(scan)
+    to_norm = body.to_email.strip().lower()
+    if to_norm not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail="Можно отправить только на адрес из списка найденных на сайте.",
+        )
+
+    now = time.monotonic()
+    last = _last_preview_send_at.get(scan_id, 0.0)
+    if now - last < _SEND_PREVIEW_COOLDOWN_SEC:
+        raise HTTPException(
+            status_code=429,
+            detail="Подождите минуту перед повторной отправкой с этого скана.",
+        )
+
+    result = await session.execute(select(Finding).where(Finding.scan_id == scan_id))
+    findings = result.scalars().all()
+    compliance_total = sum_compliance_penalties(findings)
+    breach_total = sum_breach_penalties(findings)
+
+    settings = get_settings()
+    landing = settings.public_site_url.rstrip("/")
+    if "?" in landing:
+        landing += "&utm_source=outreach&utm_medium=email"
+    else:
+        landing += "/?utm_source=outreach&utm_medium=email"
+
+    subject, text_body = build_outreach_email_text(
+        target_url=scan.target_url,
+        compliance_total=compliance_total,
+        breach_total=breach_total,
+        landing_url=landing,
+    )
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["To"] = to_norm
+    message.set_content(text_body, charset="utf-8")
+
+    try:
+        await send_email_message(message)
+    except SmtpNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except SmtpDeliveryError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"SMTP не принял письмо: {exc}",
+        ) from exc
+
+    _last_preview_send_at[scan_id] = now
+    return SendPreviewEmailResponse(ok=True, to=to_norm, subject=subject)

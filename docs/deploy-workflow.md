@@ -4,7 +4,9 @@
 
 1. Вносит правки в код.
 2. `git commit` + `git push` в `main`.
-3. На **Witty Vulpecula** (`194.87.220.206`):
+3. **Обязательно** сразу деплой на прод (если изменения для пользователей/API) — без отдельной просьбы заказчика.
+4. Обновить **`PROGRESS.md`** и при необходимости ТЗ (`docs/outreach-machine-tz.md`).
+5. На **Witty Vulpecula** (`194.87.220.206`):
    ```bash
    ssh root@194.87.220.206 'bash /root/apps/site-audit/scripts/remote-redeploy.sh'
    ```

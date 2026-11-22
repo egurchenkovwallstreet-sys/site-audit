@@ -1,0 +1,13 @@
+---
+description: Деплой после готовой итерации
+alwaysApply: true
+---
+
+После содержательных правок (код для прод/API/UI):
+
+1. `git commit` + `git push origin main`
+2. Сразу `ssh root@194.87.220.206 "bash /root/apps/site-audit/scripts/remote-redeploy.sh"`
+3. Обновить `PROGRESS.md` и ТЗ при продуктовых изменениях
+4. Не перезаписывать `.env` на сервере
+
+См. `docs/deploy-workflow.md`.

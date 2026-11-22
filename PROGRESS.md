@@ -118,6 +118,8 @@
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.
 - [x] Darom (`https://darom-app.online/`) — без ложных политика/cookie (проверено на VPS).
 - [x] E-mail из Flutter-бандла (`main.dart.js`), в т.ч. Darom — `email_discover.py` + кэш SPA-скана.
+- [x] Таймер 3–5 мин на экране скана, ускорение при раннем `completed` (деплой `b4f0132`).
+- [x] Кнопка «Отправить письмо» + API preview outreach (`docs/smtp-setup.md`).
 - [x] Базовый прогон `regression_scan.py` на VPS.
 
 ## Шаг 5. Справочник штрафов
