@@ -70,7 +70,15 @@
 - [x] Чекбоксы `agreed` / consent; дедуп копий форм на странице (okno.ru).
 - [x] okno.ru в регрессии на VPS (без ложного «7 форм без согласия»).
 
-### Итерация 2 (план)
+### Итерация 2 — Playwright (2025-11-22)
+
+- [x] Chromium в backend (`mcr.microsoft.com/playwright/python:v1.49.1-jammy`), `playwright_fetch.py`, бюджет 8 URL.
+- [x] Fallback при антиботе: bootstrap по `back_location` + legal seeds; повтор для юр. URL без текста политики.
+- [x] Контекст: `playwright_urls`; тесты `test_playwright_integration.py`.
+- [x] VPS: cian.ru scan **#173** — `privacy_found`, ~31 с (браузерные попытки); текст политики с IP дата-центра по-прежнему не отдаётся — остаётся `back_location`.
+- [ ] Полная регрессия `regression_scan.py` на VPS.
+
+### Итерация 2 (продолжение)
 
 - [x] Playwright для «пустых» SPA-оболочек и жёсткого антибота (полный текст политики, не только `back_location`).
 - [ ] Cookie / Referrer-Policy / Set-Cookie флаги (расширение тех. блока).
