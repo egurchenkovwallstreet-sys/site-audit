@@ -44,6 +44,18 @@ SECURITY_BREACH_SCENARIOS: dict[str, BreachScenario] = {
         "pd_leak_via_security_gap",
         "Cookie с токенами может уйти по незащищённому каналу — риск захвата сессии и ПДн.",
     ),
+    "cookie_no_httponly": BreachScenario(
+        "pd_leak_via_security_gap",
+        "Через XSS cookie сессии может быть прочитан — риск захвата учётной записи и ПДн.",
+    ),
+    "cookie_no_samesite": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "CSRF и кросс-сайтовые запросы повышают риск несанкционированных действий от имени пользователя.",
+    ),
+    "missing_referrer_policy": BreachScenario(
+        "pd_leak_via_security_gap_minor",
+        "URL с идентификаторами в query может утечь на сторонние ресурсы через Referer.",
+    ),
     "server_disclosure": BreachScenario(
         "pd_leak_via_security_gap_minor",
         "Упрощает подбор эксплойтов; при успешном взломе возможна утечка ПДн из БД.",

@@ -10,6 +10,7 @@ SECURITY_HEADERS = (
     ("x-content-type-options", "X-Content-Type-Options", "medium", "missing_x_content_type_options"),
     ("x-frame-options", "X-Frame-Options", "medium", "missing_x_frame_options"),
     ("content-security-policy", "Content-Security-Policy (CSP)", "medium", "missing_csp"),
+    ("referrer-policy", "Referrer-Policy", "low", "missing_referrer_policy"),
 )
 
 
@@ -121,19 +122,37 @@ async def check_url_technical(url: str) -> list[dict]:
         )
 
     set_cookie = header_keys.get("set-cookie", "")
-    if (
-        target.lower().startswith("https://")
-        and set_cookie
-        and "secure" not in set_cookie.lower()
-    ):
-        findings.append(
-            _finding(
-                title="Cookie без флага Secure",
-                description="Cookie может передаваться по незащищённому соединению.",
-                severity="medium",
-                remediation="Добавьте флаг Secure для cookie на HTTPS-сайте.",
-                issue_key="cookie_no_secure",
+    if set_cookie and target.lower().startswith("https://"):
+        lower_sc = set_cookie.lower()
+        if "secure" not in lower_sc:
+            findings.append(
+                _finding(
+                    title="Cookie без флага Secure",
+                    description="Cookie может передаваться по незащищённому соединению.",
+                    severity="medium",
+                    remediation="Добавьте флаг Secure для cookie на HTTPS-сайте.",
+                    issue_key="cookie_no_secure",
+                )
             )
-        )
+        if "httponly" not in lower_sc:
+            findings.append(
+                _finding(
+                    title="Cookie без флага HttpOnly",
+                    description="JavaScript на странице может прочитать cookie сессии.",
+                    severity="medium",
+                    remediation="Добавьте HttpOnly для cookie, связанных с авторизацией.",
+                    issue_key="cookie_no_httponly",
+                )
+            )
+        if "samesite" not in lower_sc:
+            findings.append(
+                _finding(
+                    title="Cookie без атрибута SameSite",
+                    description="Повышен риск CSRF и утечки cookie в кросс-сайтовых запросах.",
+                    severity="low",
+                    remediation="Укажите SameSite=Lax или Strict для сессионных cookie.",
+                    issue_key="cookie_no_samesite",
+                )
+            )
 
     return findings

@@ -53,7 +53,7 @@
 
 - [x] Fallback `/contacts/`, `/contact/`, `/kontakty/` при 403/429/странице‑капче.
 - [x] В контексте скана: `requested_url`, `scanned_url`, `used_fallback`.
-- [ ] Прогон etagi.com на VPS.
+- [ ] Прогон etagi.com на VPS (добавлен в `regression_urls.json`).
 
 ### Итерация 1.2 — привязка к нормам (2025-11-21)
 
@@ -76,12 +76,12 @@
 - [x] Fallback при антиботе: bootstrap по `back_location` + legal seeds; повтор для юр. URL без текста политики.
 - [x] Контекст: `playwright_urls`; тесты `test_playwright_integration.py`.
 - [x] VPS: cian.ru scan **#173** — `privacy_found`, ~31 с (браузерные попытки); текст политики с IP дата-центра по-прежнему не отдаётся — остаётся `back_location`.
-- [ ] Полная регрессия `regression_scan.py` на VPS.
+- [ ] Полная регрессия `regression_scan.py` на VPS (после фикса okno `accepts_the_licen`).
 
 ### Итерация 2 (продолжение)
 
 - [x] Playwright для «пустых» SPA-оболочек и жёсткого антибота (полный текст политики, не только `back_location`).
-- [ ] Cookie / Referrer-Policy / Set-Cookie флаги (расширение тех. блока).
+- [x] Cookie / Referrer-Policy / Set-Cookie флаги (Referrer-Policy, HttpOnly, SameSite, Secure).
 - [ ] Расширение `regression_urls.json`: ЦИАН (добавлен), Авито, attik, эталонный «плохой» сайт.
 - [ ] Содержательная проверка политики (ч.4 ст. 18.1): оператор, цели, права субъекта (после стабильного HTML).
 

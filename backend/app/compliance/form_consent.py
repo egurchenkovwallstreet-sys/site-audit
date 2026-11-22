@@ -243,7 +243,17 @@ def _form_has_consent_checkbox(form: Tag) -> bool:
             return True
         if any(
             token in field_name or token in field_id
-            for token in ("consent", "agree", "privacy", "policy", "соглас", "пдн")
+            for token in (
+                "consent",
+                "agree",
+                "accept",
+                "privacy",
+                "policy",
+                "licen",
+                "соглас",
+                "соглаш",
+                "пдн",
+            )
         ):
             return True
         ctx = inp.get_text(" ", strip=True).lower()
@@ -253,7 +263,11 @@ def _form_has_consent_checkbox(form: Tag) -> bool:
         if any(k in ctx for k in ("соглас", "персональн", "privacy", "consent", "152", "пдн", "политик")):
             return True
     form_text = form.get_text(" ", strip=True).lower()
-    if "политик" in form_text and "соглас" in form_text:
+    if "политик" in form_text and (
+        "соглас" in form_text
+        or "соглаш" in form_text
+        or "соглашаюсь" in form_text
+    ):
         return True
     return False
 

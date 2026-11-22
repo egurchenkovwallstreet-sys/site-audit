@@ -28,5 +28,12 @@
       "privacy_found": true,
       "absent_penalty_codes": ["no_privacy_policy"]
     }
+  },
+  {
+    "name": "etagi.com antibot entry",
+    "url": "https://www.etagi.com/",
+    "expect": {
+      "absent_penalty_codes": ["no_privacy_policy"]
+    }
   }
 ]
