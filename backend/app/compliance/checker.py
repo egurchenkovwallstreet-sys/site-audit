@@ -19,6 +19,10 @@ from app.compliance.privacy_detection import (
     privacy_urls_from_sitemap,
 )
 from app.compliance.form_consent import forms_missing_pdn_consent
+from app.compliance.policy_content import (
+    analyze_privacy_policy_text,
+    extract_policy_text_from_scan,
+)
 from app.compliance.legal_basis import format_finding_preamble
 from app.compliance.spa_bundle_scan import SpaBundleScan, analyze_spa_bundles
 from app.compliance.tracking_scripts import (
@@ -30,7 +34,7 @@ from app.scan.access_findings import blocked_scan_finding
 from app.scan.email_discover import discover_contact_emails_for_site
 from app.scan.fetch import fetch_target_page
 from app.scan.playwright_fetch import PlaywrightFetchBudget, fetch_target_page_smart
-from app.scan.site_scan import fetch_scan_site
+from app.scan.site_scan import SiteScanBundle, fetch_scan_site
 
 COOKIE_MARKERS = ("cookie", "consent", "gdpr", "куки", "согласие")
 
@@ -147,6 +151,8 @@ def run_compliance_checks_site(
     *,
     privacy_found: bool,
     consent_markers_found: bool,
+    policy_text: str | None = None,
+    policy_source: str | None = None,
 ) -> list[RawFinding]:
     findings: list[RawFinding] = []
     page_count = len(pages)
@@ -223,6 +229,23 @@ def run_compliance_checks_site(
                 severity="high",
             )
         )
+
+    if privacy_found and policy_text and policy_source:
+        content = analyze_privacy_policy_text(policy_text, source=policy_source)
+        if content.analyzed and content.missing_labels:
+            severity = "high" if len(content.missing_labels) >= 3 else "medium"
+            findings.append(
+                RawFinding(
+                    penalty_code="privacy_policy_incomplete",
+                    title="В политике ПДн не хватает обязательных разделов",
+                    description=(
+                        format_finding_preamble("privacy_policy_incomplete")
+                        + f"Источник: {policy_source}. "
+                        f"Не обнаружены в тексте: {', '.join(content.missing_labels)}."
+                    ),
+                    severity=severity,
+                )
+            )
 
     return findings
 
@@ -302,9 +325,14 @@ def compliance_context_dict(
     return ctx
 
 
-async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
+async def check_url_compliance(
+    url: str,
+    *,
+    bundle: SiteScanBundle | None = None,
+) -> tuple[list[dict], dict[str, Any]]:
     normalized = validate_target_url(url)
-    bundle = await fetch_scan_site(normalized)
+    if bundle is None:
+        bundle = await fetch_scan_site(normalized)
     entry = bundle.entry
     fetch = entry.result
     page_url = entry.fetched_url
@@ -381,12 +409,16 @@ async def check_url_compliance(url: str) -> tuple[list[dict], dict[str, Any]]:
                 consent_source = f"Признаки согласия на странице: {url}"
                 break
 
+    policy_text, policy_source = extract_policy_text_from_scan(page_pairs, spa)
+
     findings = [
         enrich_finding(f)
         for f in run_compliance_checks_site(
             page_pairs,
             privacy_found=privacy_found,
             consent_markers_found=consent_found,
+            policy_text=policy_text,
+            policy_source=policy_source,
         )
     ]
     scanned_urls = [p.url for p in bundle.pages]

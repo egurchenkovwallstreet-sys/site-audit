@@ -3,7 +3,8 @@ from __future__ import annotations
 from app.compliance.checker import validate_target_url
 from app.data.security_breach_risks import apply_breach_penalty
 from app.scan.access_findings import blocked_scan_finding, ssl_chain_finding
-from app.scan.site_scan import fetch_scan_site
+from app.scan.page_fetch import page_is_readable
+from app.scan.site_scan import SiteScanBundle, fetch_scan_site
 
 SECURITY_HEADERS = (
     ("strict-transport-security", "HSTS", "high", "missing_hsts"),
@@ -42,7 +43,22 @@ def _finding(
     return row
 
 
-async def check_url_technical(url: str) -> list[dict]:
+def _response_header_sets(bundle: SiteScanBundle) -> list[tuple[str, dict[str, str]]]:
+    out: list[tuple[str, dict[str, str]]] = []
+    entry = bundle.entry
+    if page_is_readable(entry.html, entry.result.status_code):
+        out.append((entry.fetched_url, entry.result.headers))
+    for page in bundle.pages:
+        if page_is_readable(page.html, page.result.status_code):
+            out.append((page.url, page.result.headers))
+    return out
+
+
+async def check_url_technical(
+    url: str,
+    *,
+    bundle: SiteScanBundle | None = None,
+) -> list[dict]:
     target = validate_target_url(url)
     findings: list[dict] = []
 
@@ -57,7 +73,8 @@ async def check_url_technical(url: str) -> list[dict]:
             )
         )
 
-    bundle = await fetch_scan_site(target)
+    if bundle is None:
+        bundle = await fetch_scan_site(target)
     entry = bundle.entry
     fetch = entry.result
 
@@ -83,58 +100,83 @@ async def check_url_technical(url: str) -> list[dict]:
             )
         )
 
-    header_keys = fetch.headers
+    header_sets = _response_header_sets(bundle)
+    if not header_sets and fetch.headers:
+        header_sets = [(entry.fetched_url, fetch.headers)]
+
+    page_count = len(header_sets)
 
     for key, label, severity, issue_key in SECURITY_HEADERS:
-        if key not in header_keys:
+        pages_with = [url for url, hdr in header_sets if key in hdr]
+        if pages_with:
+            continue
+        findings.append(
+            _finding(
+                title=f"Нет заголовка {label}",
+                description=(
+                    f"Ни на одной из {page_count or 1} проверенных ответов "
+                    f"нет заголовка «{key}»."
+                ),
+                severity=severity,
+                remediation=f"Настройте заголовок {label} для усиления защиты.",
+                issue_key=issue_key,
+            )
+        )
+
+    for page_url, header_keys in header_sets:
+        server = header_keys.get("server", "")
+        if any(ch.isdigit() for ch in server) or "apache/" in server.lower() or "nginx/" in server.lower():
             findings.append(
                 _finding(
-                    title=f"Нет заголовка {label}",
-                    description=f"Ответ сервера не содержит «{key}».",
-                    severity=severity,
-                    remediation=f"Настройте заголовок {label} для усиления защиты.",
-                    issue_key=issue_key,
+                    title="Сервер раскрывает версию в заголовке Server",
+                    description=f"Страница {page_url}: {server[:120]}",
+                    severity="low",
+                    remediation="Скройте или упростите заголовок Server.",
+                    issue_key="server_disclosure",
                 )
             )
+            break
 
-    server = header_keys.get("server", "")
-    if any(ch.isdigit() for ch in server) or "apache/" in server.lower() or "nginx/" in server.lower():
-        findings.append(
-            _finding(
-                title="Сервер раскрывает версию в заголовке Server",
-                description=f"Значение: {server[:120]}",
-                severity="low",
-                remediation="Скройте или упростите заголовок Server.",
-                issue_key="server_disclosure",
+    for page_url, header_keys in header_sets:
+        powered = header_keys.get("x-powered-by")
+        if powered:
+            findings.append(
+                _finding(
+                    title="Раскрыта технология в X-Powered-By",
+                    description=f"Страница {page_url}: {powered[:120]}",
+                    severity="low",
+                    remediation="Отключите заголовок X-Powered-By на сервере или в приложении.",
+                    issue_key="x_powered_by_disclosure",
+                )
             )
-        )
+            break
 
-    powered = header_keys.get("x-powered-by")
-    if powered:
-        findings.append(
-            _finding(
-                title="Раскрыта технология в X-Powered-By",
-                description=f"Значение: {powered[:120]}",
-                severity="low",
-                remediation="Отключите заголовок X-Powered-By на сервере или в приложении.",
-                issue_key="x_powered_by_disclosure",
-            )
-        )
-
-    set_cookie = header_keys.get("set-cookie", "")
-    if set_cookie and target.lower().startswith("https://"):
-        lower_sc = set_cookie.lower()
-        if "secure" not in lower_sc:
+    if target.lower().startswith("https://"):
+        insecure_cookie = False
+        no_httponly = False
+        no_samesite = False
+        for _, header_keys in header_sets:
+            set_cookie = header_keys.get("set-cookie", "")
+            if not set_cookie:
+                continue
+            low = set_cookie.lower()
+            if "secure" not in low:
+                insecure_cookie = True
+            if "httponly" not in low:
+                no_httponly = True
+            if "samesite" not in low:
+                no_samesite = True
+        if insecure_cookie:
             findings.append(
                 _finding(
                     title="Cookie без флага Secure",
-                    description="Cookie может передаваться по незащищённому соединению.",
+                    description="На HTTPS-сайте в ответах есть cookie без Secure.",
                     severity="medium",
                     remediation="Добавьте флаг Secure для cookie на HTTPS-сайте.",
                     issue_key="cookie_no_secure",
                 )
             )
-        if "httponly" not in lower_sc:
+        if no_httponly:
             findings.append(
                 _finding(
                     title="Cookie без флага HttpOnly",
@@ -144,7 +186,7 @@ async def check_url_technical(url: str) -> list[dict]:
                     issue_key="cookie_no_httponly",
                 )
             )
-        if "samesite" not in lower_sc:
+        if no_samesite:
             findings.append(
                 _finding(
                     title="Cookie без атрибута SameSite",

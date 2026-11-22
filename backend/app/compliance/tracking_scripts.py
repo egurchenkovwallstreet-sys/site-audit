@@ -17,6 +17,7 @@ FOREIGN_ANALYTICS_MARKERS = (
     "/gtag/js",
     "gtag(",
     "analytics.js",
+    "googleadservices.com",
     "facebook.net",
     "connect.facebook.net",
     "fbevents.js",
@@ -28,6 +29,24 @@ FOREIGN_ANALYTICS_MARKERS = (
     "segment.com",
     "segment.io",
     "tiktok.com/i18n",
+    "clarity.ms",
+    "linkedin.com/px",
+    "pinimg.com",
+    "pinterest.com/tag",
+    "snapchat.com/p",
+    "twitter.com/uwt",
+    "static.ads-twitter.com",
+)
+
+RU_EXTRA_TRACKING = (
+    "top-fwz1.mail.ru",
+    "top.mail.ru",
+    "vk.com/rtrg",
+    "vk-pixel",
+    "api.getbeamer.com",
+    "carrotquest.io",
+    "jivosite",
+    "envybox.io",
 )
 
 
@@ -46,7 +65,8 @@ def _tracking_haystack(html: str) -> str:
 
 def detect_ru_analytics(html: str) -> list[str]:
     haystack = _tracking_haystack(html)
-    return [m for m in RU_ANALYTICS_MARKERS if m in haystack]
+    markers = RU_ANALYTICS_MARKERS + RU_EXTRA_TRACKING
+    return [m for m in markers if m in haystack]
 
 
 def detect_foreign_analytics(html: str) -> list[str]:

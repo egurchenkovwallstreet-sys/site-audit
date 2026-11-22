@@ -63,6 +63,17 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
         severity="medium",
         remediation="Опишите в политике цели, сроки и права субъекта персональных данных.",
     ),
+    "privacy_policy_incomplete": PenaltyEntry(
+        code="privacy_policy_incomplete",
+        title="Политика ПДн без обязательных разделов",
+        legal_article="152-ФЗ ст. 18.1 ч. 4; ст. 13.11 КоАП РФ ч. 4",
+        max_penalty=80_000,
+        severity="medium",
+        remediation=(
+            "Дополните политику: оператор, цели, правовые основания, права субъекта, "
+            "сроки хранения, условия передачи (в т.ч. трансграничной)."
+        ),
+    ),
     "no_rkn_notification": PenaltyEntry(
         code="no_rkn_notification",
         title="Неуведомление РКН о начале обработки",

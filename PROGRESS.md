@@ -113,6 +113,7 @@
 ## Шаг 4. Комплаенс-проверки
 
 - [x] `backend/app/compliance/checker.py` — политика, cookie, формы, иностранные SDK.
+- [x] **Глубина A1** (`docs/scan-depth-roadmap.md`): содержание политики ч. 4 (`privacy_policy_incomplete`), техзаголовки по всем прочитанным страницам, расширенные трекеры; один проход скана.
 - [x] robots.txt + sitemap.xml в поиске политики.
 - [x] Привязка штрафов из справочника.
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.

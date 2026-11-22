@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import check_url_compliance
-from app.scan.technical_checker import check_url_technical
 from app.models.entities import Finding, Scan, ScanStatus
+from app.scan.site_scan import fetch_scan_site
+from app.scan.technical_checker import check_url_technical
 
 
 async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
@@ -17,13 +18,17 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
     try:
         rows: list[dict] = []
         context: dict | None = None
+        bundle = await fetch_scan_site(scan.target_url)
         try:
-            compliance_rows, context = await check_url_compliance(scan.target_url)
+            compliance_rows, context = await check_url_compliance(
+                scan.target_url,
+                bundle=bundle,
+            )
             rows.extend(compliance_rows)
         except Exception:
             pass
         try:
-            rows.extend(await check_url_technical(scan.target_url))
+            rows.extend(await check_url_technical(scan.target_url, bundle=bundle))
         except Exception:
             pass
         if context is not None:
