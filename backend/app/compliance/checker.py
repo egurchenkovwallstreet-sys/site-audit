@@ -514,10 +514,20 @@ async def check_url_compliance(
 
     policy_text, policy_source = extract_policy_text_from_scan(page_pairs, spa)
 
+    compliance_pages = list(page_pairs)
+    for label, body in (
+        (spa.privacy_script_url, spa.privacy_script_body),
+        (spa.consent_script_url, spa.consent_script_body),
+    ):
+        if body and len(body) > 200:
+            url = label or "spa-bundle"
+            if not any(u == url for u, _ in compliance_pages):
+                compliance_pages.append((url, body))
+
     findings = [
         enrich_finding(f)
         for f in run_compliance_checks_site(
-            page_pairs,
+            compliance_pages,
             privacy_found=privacy_found,
             consent_markers_found=consent_found,
             policy_text=policy_text,

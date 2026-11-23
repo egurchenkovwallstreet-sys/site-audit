@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 
+from app.compliance.js_text import decode_js_unicode_escapes
 from app.compliance.privacy_detection import _page_content_is_privacy_policy
 from app.compliance.spa_bundle_scan import SpaBundleScan, _body_has_privacy
 
@@ -77,7 +78,7 @@ def _normalize_policy_text(raw: str) -> str:
             tag.decompose()
         text = soup.get_text(" ", strip=True)
     else:
-        text = raw
+        text = decode_js_unicode_escapes(raw)
     text = re.sub(r"\s+", " ", text)
     return text.lower()
 

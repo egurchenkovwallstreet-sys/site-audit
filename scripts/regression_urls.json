@@ -5,7 +5,11 @@
     "expect": {
       "privacy_found": true,
       "min_pages_checked": 1,
-      "absent_penalty_codes": ["no_privacy_policy", "no_cookie_banner"]
+      "absent_penalty_codes": [
+        "no_privacy_policy",
+        "no_cookie_banner",
+        "operator_requisites_not_found"
+      ]
     }
   },
   {
