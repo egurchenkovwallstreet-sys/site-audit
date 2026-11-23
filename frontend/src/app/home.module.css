@@ -34,43 +34,64 @@
   padding: 0 0.5rem;
 }
 
-.eyebrow {
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.25rem;
-  letter-spacing: 0.02em;
-}
-
 .title {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  font-size: clamp(2.4rem, 7.5vw, 3.75rem);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
-  margin: 0 0 1.35rem;
+  gap: 0.35rem;
+  margin: 0 0 1.5rem;
 }
 
-.titleLine,
+.titleLine {
+  display: block;
+  font-size: clamp(1.65rem, 5.2vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-wrap: balance;
+  max-width: 100%;
+}
+
 .titleLineAccent {
   display: block;
-  width: 100%;
+  font-size: clamp(1.35rem, 4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--accent);
+  white-space: nowrap;
 }
 
-.titleLineAccent {
-  color: var(--text);
-  font-weight: 700;
-}
-
-.subtitle {
-  font-size: clamp(1.15rem, 2.8vw, 1.4rem);
-  line-height: 1.5;
-  color: var(--text-secondary);
+.checkScope {
+  text-align: left;
   margin: 0 auto;
-  max-width: 28rem;
-  text-wrap: balance;
+  max-width: 32rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.checkScopeHeading {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.checkScopeText {
+  margin: 0;
+  font-size: clamp(0.95rem, 2.4vw, 1.08rem);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.checkScopeLead {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .panel {

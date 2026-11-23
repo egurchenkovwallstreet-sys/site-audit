@@ -15,15 +15,25 @@ export function HomeClient() {
       </header>
       <main className={styles.main}>
         <header className={styles.hero}>
-          <p className={styles.eyebrow}>152-ФЗ + технические сигналы</p>
           <h1 className={styles.title}>
             <span className={styles.titleLine}>Проверка сайта по 152‑ФЗ</span>
             <span className={styles.titleLineAccent}>онлайн · до 10 минут</span>
           </h1>
-          <p className={styles.subtitle}>
-            168‑ФЗ, cookie, формы, SEO-разметка и технические риски — без
-            регистрации
-          </p>
+          <div
+            className={styles.checkScope}
+            aria-labelledby="check-scope-heading"
+          >
+            <p id="check-scope-heading" className={styles.checkScopeHeading}>
+              Что проверяет сервис
+            </p>
+            <p className={styles.checkScopeText}>
+              <span className={styles.checkScopeLead}>152‑ФЗ и технические сигналы</span>
+              : политика ПДн, cookie, формы и согласия, реквизиты, иностранные
+              SDK, техзаголовки и типовые риски утечки.{" "}
+              <span className={styles.checkScopeLead}>168‑ФЗ</span>, SEO-разметка и
+              углублённый техаудит (Nuclei). Без регистрации.
+            </p>
+          </div>
         </header>
         <div className={styles.panel}>
           <ScanForm
