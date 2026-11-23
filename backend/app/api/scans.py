@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import validate_target_url
+from app.data.koap_sanctions import sanctions_for_penalty_code
 from app.db.session import async_session_factory, get_db
 from app.models.entities import Finding, Scan, ScanStatus
 from app.services.outreach_message import (
@@ -75,6 +76,16 @@ class OutreachEmailPreviewResponse(BaseModel):
     test_inbox_url: str | None = None
 
 
+class PenaltySanctionsResponse(BaseModel):
+    koap_part: str
+    koap_repeat_part: str | None = None
+    ip_max: int
+    legal_max: int
+    ip_repeat_max: int | None = None
+    legal_repeat_max: int | None = None
+    ip_note: str | None = None
+
+
 class FindingResponse(BaseModel):
     id: int
     type: str
@@ -87,6 +98,22 @@ class FindingResponse(BaseModel):
     min_level: int
     remediation: str | None
     penalty_code: str | None = None
+    sanctions: PenaltySanctionsResponse | None = None
+
+
+def _sanctions_response(penalty_code: str | None) -> PenaltySanctionsResponse | None:
+    limits = sanctions_for_penalty_code(penalty_code)
+    if limits is None:
+        return None
+    return PenaltySanctionsResponse(
+        koap_part=limits.koap_part,
+        koap_repeat_part=limits.koap_repeat_part,
+        ip_max=limits.ip_max,
+        legal_max=limits.legal_max,
+        ip_repeat_max=limits.ip_repeat_max,
+        legal_repeat_max=limits.legal_repeat_max,
+        ip_note=limits.ip_note,
+    )
 
 
 async def _run_scan_task(scan_id: int) -> None:
@@ -170,6 +197,7 @@ async def get_scan_findings(
             min_level=f.min_level,
             remediation=f.remediation,
             penalty_code=f.penalty_code,
+            sanctions=_sanctions_response(f.penalty_code),
         )
         for f in findings
     ]

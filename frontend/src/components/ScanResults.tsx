@@ -11,6 +11,13 @@ import {
   totalPenaltyColor,
   type RiskColor,
 } from "@/lib/findingRisk";
+import {
+  breachSanctionTotals,
+  complianceSanctionTotals,
+  formatRubMax,
+} from "@/lib/penaltySanctions";
+import type { PenaltySanctions } from "@/lib/penaltySanctions";
+import { PenaltySanctionsTable } from "./PenaltySanctionsTable";
 
 type ScanContext = {
   scope?: string;
@@ -43,6 +50,7 @@ type Finding = {
   legal_article: string | null;
   max_penalty: number | null;
   color: string | null;
+  sanctions?: PenaltySanctions | null;
 };
 
 const STATUS_TEXT: Record<string, string> = {
@@ -166,6 +174,67 @@ const RISK_PILL_CLASS: Record<RiskColor, string> = {
   green: styles.riskPillGreen,
 };
 
+function SanctionTotalsPanel({
+  title,
+  totals,
+  variant,
+}: {
+  title: string;
+  totals: ReturnType<typeof complianceSanctionTotals>;
+  variant: RiskColor;
+}) {
+  const hasPrimary = totals.ip > 0 || totals.legal > 0;
+  const hasRepeat = totals.ipRepeat > 0 || totals.legalRepeat > 0;
+  if (!hasPrimary) {
+    return null;
+  }
+  return (
+    <div
+      className={`${styles.sanctionTotals} ${styles[`total_${variant}`]}`}
+      role="status"
+    >
+      <p className={styles.sanctionTotalsTitle}>{title}</p>
+      <table className={styles.sanctionTotalsTable}>
+        <thead>
+          <tr>
+            <th scope="col">Субъект</th>
+            <th scope="col">Первичное (сумма потолков)</th>
+            <th scope="col">Повторное (сумма потолков)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">ИП</th>
+            <td>
+              {totals.ip > 0 ? formatRubMax(totals.ip) : "—"}
+            </td>
+            <td>
+              {hasRepeat && totals.ipRepeat > 0
+                ? formatRubMax(totals.ipRepeat)
+                : "—"}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Юрлицо</th>
+            <td>
+              {totals.legal > 0 ? formatRubMax(totals.legal) : "—"}
+            </td>
+            <td>
+              {hasRepeat && totals.legalRepeat > 0
+                ? formatRubMax(totals.legalRepeat)
+                : "—"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className={styles.sanctionTotalsNote}>
+        Складываем верхние границы по каждому пункту — фактический штраф один на
+        состав, диапазоны в КоАП не суммируются в одну выплату.
+      </p>
+    </div>
+  );
+}
+
 function FindingItems({ items }: { items: Finding[] }) {
   if (items.length === 0) {
     return null;
@@ -195,14 +264,16 @@ function FindingItems({ items }: { items: Finding[] }) {
             {f.legal_article ? (
               <p className={styles.itemMeta}>{f.legal_article}</p>
             ) : null}
-            {f.max_penalty != null ? (
+            {f.sanctions ? (
+              <PenaltySanctionsTable sanctions={f.sanctions} compact />
+            ) : f.max_penalty != null ? (
               <p
                 className={`${styles.penalty} ${styles[`penalty_${risk}`]}`}
               >
                 {isForecast
-                  ? "Возможный штраф при утечке или взломе через эту уязвимость: до "
-                  : "Штраф по выявленному нарушению: до "}
-                {f.max_penalty.toLocaleString("ru-RU")} ₽
+                  ? "Возможный штраф при утечке или взломе через эту уязвимость: "
+                  : "Ориентир штрафа: "}
+                {formatRubMax(f.max_penalty)}
               </p>
             ) : null}
           </li>
@@ -567,6 +638,15 @@ export function ScanResults({
   const noFindingsAtAll =
     findings.filter((f) => f.type !== "access").length === 0;
 
+  const complianceSanctions = useMemo(
+    () => complianceSanctionTotals(findings),
+    [findings],
+  );
+  const breachSanctions = useMemo(
+    () => breachSanctionTotals(findings),
+    [findings],
+  );
+
   const displayUrl = targetUrl || scan?.target_url || "…";
 
   async function copyShareLink() {
@@ -664,33 +744,26 @@ export function ScanResults({
         ) : (
           <>
             <div className={styles.totalsBlock} role="status">
-              <div
-                className={`${styles.totalRow} ${styles.totalRowFact} ${styles[`total_${riskSummary.complianceColor}`]}`}
-              >
-                <p className={styles.totalLabel}>
-                  Факты: сумма штрафов по выявленным нарушениям 152-ФЗ
+              <SanctionTotalsPanel
+                title="Факты по 152‑ФЗ: ориентиры штрафов по КоАП"
+                totals={complianceSanctions}
+                variant={riskSummary.complianceColor}
+              />
+              {complianceSanctions.legal === 0 &&
+              complianceSanctions.ip === 0 ? (
+                <p className={styles.sectionEmpty}>
+                  Нарушений со штрафом по КоАП не найдено.
                 </p>
-                <p className={styles.totalAmount}>
-                  {riskSummary.complianceTotal > 0
-                    ? `до ${riskSummary.complianceTotal.toLocaleString("ru-RU")} ₽`
-                    : "нарушений со штрафом не найдено"}
-                </p>
-              </div>
-              <div
-                className={`${styles.totalRow} ${styles.totalRowDivider} ${styles.totalRowForecast} ${styles[`total_${riskSummary.breachColor}`]}`}
-              >
-                <p className={styles.totalLabel}>
-                  Прогноз: сумма штрафов при утечке или взломе
-                </p>
-                <p className={styles.totalAmount}>
-                  {riskSummary.breachTotal > 0
-                    ? `до ${riskSummary.breachTotal.toLocaleString("ru-RU")} ₽`
-                    : "сценариев со штрафом не найдено"}
-                </p>
-              </div>
+              ) : null}
+              <SanctionTotalsPanel
+                title="Прогноз (безопасность): если сценарий реализуется"
+                totals={breachSanctions}
+                variant={riskSummary.breachColor}
+              />
               <p className={styles.totalNote}>
-                Верхняя строка — только зафиксированные нарушения. Нижняя — оценка
-                при эксплуатации уязвимостей. Итог назначает орган.
+                Верхний блок — зафиксированные нарушения. Нижний — при
+                эксплуатации уязвимостей. Размер назначает орган в пределах
+                статьи КоАП.
               </p>
             </div>
 
