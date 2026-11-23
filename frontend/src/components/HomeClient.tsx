@@ -40,7 +40,7 @@ export function HomeClient() {
           ) : null}
         </div>
         <p className={styles.scopeNote}>
-          До 15 страниц сайта (вход, ссылки с неё, sitemap) и типовые адреса
+          До 22 страниц сайта (вход, ссылки с неё, sitemap) и типовые адреса
           политики ПДн — без ручного обхода.
         </p>
         <p className={styles.disclaimer}>
