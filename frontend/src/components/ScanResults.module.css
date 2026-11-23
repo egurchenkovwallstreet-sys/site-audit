@@ -13,6 +13,14 @@
   align-items: center;
   gap: calc(1rem * var(--ui));
   margin-bottom: calc(0.75rem * var(--ui));
+  flex-wrap: wrap;
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.25rem * var(--ui));
+  justify-content: flex-end;
 }
 
 .title {

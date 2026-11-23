@@ -6,7 +6,7 @@ import styles from "./ScanForm.module.css";
 export function ScanForm({
   onStarted,
 }: {
-  onStarted: (scanId: number, url: string) => void;
+  onStarted: (scanId: number) => void;
 }) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function ScanForm({
         );
         return;
       }
-      onStarted(data.id, trimmed);
+      onStarted(data.id);
     } catch {
       setError("Сервер недоступен. Попробуйте позже.");
     } finally {

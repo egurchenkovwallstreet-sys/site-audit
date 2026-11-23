@@ -430,11 +430,12 @@ export function ScanResults({
   onReset,
 }: {
   scanId: number;
-  targetUrl: string;
+  targetUrl?: string;
   onReset: () => void;
 }) {
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
   const [accelerating, setAccelerating] = useState(false);
   const [countdownSettled, setCountdownSettled] = useState(false);
@@ -566,15 +567,36 @@ export function ScanResults({
   const noFindingsAtAll =
     findings.filter((f) => f.type !== "access").length === 0;
 
+  const displayUrl = targetUrl || scan?.target_url || "…";
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      /* clipboard denied */
+    }
+  }
+
   return (
     <section className={styles.wrap}>
       <div className={styles.head}>
         <h2 className={styles.title}>Результат</h2>
-        <button type="button" className={styles.reset} onClick={onReset}>
-          Новая проверка
-        </button>
+        <div className={styles.headActions}>
+          <button
+            type="button"
+            className={styles.reset}
+            onClick={copyShareLink}
+          >
+            {linkCopied ? "Ссылка скопирована" : "Скопировать ссылку"}
+          </button>
+          <button type="button" className={styles.reset} onClick={onReset}>
+            Новая проверка
+          </button>
+        </div>
       </div>
-      <p className={styles.url}>{targetUrl}</p>
+      <p className={styles.url}>{displayUrl}</p>
       <p className={styles.status}>
         {accelerating && scan?.status === "completed"
           ? "Проверка завершена — собираем отчёт…"

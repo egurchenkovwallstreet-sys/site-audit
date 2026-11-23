@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ScanForm } from "./ScanForm";
-import { ScanResults } from "./ScanResults";
 import { ThemeToggle } from "./ThemeToggle";
 import styles from "../app/home.module.css";
 
 export function HomeClient() {
-  const [active, setActive] = useState<{ id: number; url: string } | null>(null);
+  const router = useRouter();
 
   return (
     <div className={styles.page}>
@@ -18,26 +17,18 @@ export function HomeClient() {
         <header className={styles.hero}>
           <p className={styles.eyebrow}>152-ФЗ + технические сигналы</p>
           <h1 className={styles.title}>
-            <span className={styles.titleLine}>Проверьте свой сайт</span>
-            <span className={styles.titleLineAccent}>до 10 минут</span>
+            <span className={styles.titleLine}>Проверка сайта по 152‑ФЗ</span>
+            <span className={styles.titleLineAccent}>онлайн · до 10 минут</span>
           </h1>
           <p className={styles.subtitle}>
-            Уязвимости и риски штрафов по 152-ФЗ
+            168‑ФЗ, cookie, формы, SEO-разметка и технические риски — без
+            регистрации
           </p>
         </header>
         <div className={styles.panel}>
-          {!active ? (
-            <ScanForm
-              onStarted={(id, url) => setActive({ id, url })}
-            />
-          ) : null}
-          {active ? (
-            <ScanResults
-              scanId={active.id}
-              targetUrl={active.url}
-              onReset={() => setActive(null)}
-            />
-          ) : null}
+          <ScanForm
+            onStarted={(id) => router.push(`/check/${id}`)}
+          />
         </div>
         <p className={styles.scopeNote}>
           До 22 страниц сайта (вход, ссылки с неё, sitemap) и типовые адреса
