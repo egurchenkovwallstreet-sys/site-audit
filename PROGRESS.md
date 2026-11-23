@@ -121,6 +121,8 @@
 - [x] **Глубина A1–A3** (`docs/scan-depth-roadmap.md`): политика ч.4, техзаголовки, трекеры; формы/реквизиты; обход контактов и legal-URL; при баннере — раскрытие cookie (`cookie_policy_*`).
 - [x] **B0 security**: пассивные пробы типовых утечек (`.git`, `.env`, …) и mixed content на HTTPS-страницах.
 - [x] **B1 / бюджет 10 мин**: Nuclei в скане, 22 стр., Playwright 14, CORS/COOP/CORP, UI «до 10 мин».
+- [x] **168-ФЗ + SEO**: `fz168_checker.py`, `seo_checker.py`, блок UI «SEO и разметка».
+- [ ] **PDF и цены** (фаза B): ЮKassa, демо на экране vs полный PDF (см. `docs/report-policy.md`).
 - [x] robots.txt + sitemap.xml в поиске политики.
 - [x] Привязка штрафов из справочника.
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.

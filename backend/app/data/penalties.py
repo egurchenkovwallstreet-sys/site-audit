@@ -82,6 +82,14 @@ PENALTY_CATALOG: dict[str, PenaltyEntry] = {
             "сроки хранения, условия передачи (в т.ч. трансграничной)."
         ),
     ),
+    "fz168_latin_marketing": PenaltyEntry(
+        code="fz168_latin_marketing",
+        title="168-ФЗ: латиница в видимых элементах интерфейса",
+        legal_article="168-ФЗ; ориентир ст. 14.8 / 14.3 КоАП РФ",
+        max_penalty=500_000,
+        severity="medium",
+        remediation="Русские подписи в UI; рекламные блоки — без необоснованной латиницы.",
+    ),
     "no_rkn_notification": PenaltyEntry(
         code="no_rkn_notification",
         title="Неуведомление РКН о начале обработки",

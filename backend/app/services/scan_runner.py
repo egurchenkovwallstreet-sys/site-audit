@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import check_url_compliance
+from app.compliance.fz168_checker import check_fz168_pages
 from app.models.entities import Finding, Scan, ScanStatus
 from app.config import get_settings
 from app.scan.nuclei_scan import run_nuclei_scan
 from app.scan.scan_budget import ScanTimeBudget
 from app.scan.site_scan import fetch_scan_site
+from app.scan.seo_checker import check_url_seo
 from app.scan.technical_checker import check_url_technical
 
 
@@ -29,6 +31,14 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
                 bundle=bundle,
             )
             rows.extend(compliance_rows)
+            if bundle.html_available:
+                rows.extend(
+                    check_fz168_pages(bundle.page_pairs)
+                )
+        except Exception:
+            pass
+        try:
+            rows.extend(await check_url_seo(scan.target_url, bundle=bundle))
         except Exception:
             pass
         try:

@@ -54,8 +54,8 @@ const STATUS_TEXT: Record<string, string> = {
 
 const STEPS = [
   "Загружаем страницу",
-  "Проверяем требования 152-ФЗ",
-  "Оцениваем технические риски",
+  "Проверяем 152-ФЗ и 168-ФЗ",
+  "SEO и технические риски",
 ] as const;
 
 /** Ориентир 7–10 мин (бюджет скана на сервере до 10 мин). */
@@ -514,11 +514,19 @@ export function ScanResults({
   const busy = countdownActive;
   const revealOutcome = scanTerminal && countdownSettled;
 
-  const { complianceFindings, breachFindings, accessFindings, riskSummary } =
-    useMemo(() => {
+  const {
+    complianceFindings,
+    seoFindings,
+    breachFindings,
+    accessFindings,
+    riskSummary,
+  } = useMemo(() => {
     const accessFindings = findings.filter((f) => f.type === "access");
     const complianceFindings = sortFindings(
       findings.filter((f) => f.type === "compliance"),
+    );
+    const seoFindings = sortFindings(
+      findings.filter((f) => f.type === "seo"),
     );
     const breachFindings = sortFindings(
       findings.filter((f) => f.type === "security"),
@@ -535,6 +543,7 @@ export function ScanResults({
     return {
       accessFindings,
       complianceFindings,
+      seoFindings,
       breachFindings,
       riskSummary: {
         red,
@@ -554,7 +563,8 @@ export function ScanResults({
     complianceRan &&
     complianceFindings.length === 0 &&
     accessFindings.length === 0;
-  const noFindingsAtAll = findings.filter((f) => f.type !== "access").length === 0;
+  const noFindingsAtAll =
+    findings.filter((f) => f.type !== "access").length === 0;
 
   return (
     <section className={styles.wrap}>
@@ -677,6 +687,26 @@ export function ScanResults({
                   {complianceRan
                     ? "По комплаенсу замечаний со штрафом не найдено."
                     : "Проверка 152-ФЗ по содержимому страниц не выполнялась (см. блок доступа выше). Штраф за отсутствие политики без анализа HTML не выставляется."}
+                </p>
+              )}
+            </section>
+
+            <section
+              className={styles.sectionBlock}
+              aria-labelledby="seo-heading"
+            >
+              <h3 id="seo-heading" className={styles.sectionTitle}>
+                SEO и разметка
+              </h3>
+              <p className={styles.sectionHint}>
+                Title, description, H1, robots/sitemap, canonical — по открытому
+                HTML. Не гарантирует позиции в поиске.
+              </p>
+              {seoFindings.length > 0 ? (
+                <FindingItems items={seoFindings} />
+              ) : (
+                <p className={styles.sectionEmpty}>
+                  Критичных SEO-замечаний не найдено.
                 </p>
               )}
             </section>
