@@ -96,122 +96,15 @@
 
 .pitch {
   margin: 0 auto 2rem;
-  max-width: 40rem;
+  max-width: 36rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   text-align: left;
 }
 
-.pitchHook {
-  margin-bottom: 1.35rem;
-  padding: 1.1rem 1.2rem 1.15rem;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--warn) 10%, var(--surface)) 0%,
-    var(--surface) 55%
-  );
-  box-shadow: 0 10px 32px color-mix(in srgb, var(--warn) 12%, transparent);
-}
-
-[data-theme="dark"] .pitchHook {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--warn) 14%, #1c1c1e) 0%,
-    #1c1c1e 60%
-  );
-}
-
-.pitchQuestion {
-  margin: 0;
-  font-size: clamp(1.05rem, 2.8vw, 1.2rem);
-  font-weight: 600;
-  color: var(--text);
-}
-
-.pitchAlert {
-  margin: 0.45rem 0 0;
-  font-size: clamp(1.15rem, 3.2vw, 1.45rem);
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.pitchEm {
-  color: color-mix(in srgb, var(--danger) 85%, var(--text));
-}
-
-.pitchFines {
-  margin-bottom: 1.15rem;
-}
-
-.pitchFinesIntro {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.pitchFinesGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-}
-
-@media (max-width: 520px) {
-  .pitchFinesGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.pitchFineCard {
-  padding: 0.85rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 96%, var(--bg));
-}
-
-.pitchFineRole {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.pitchFineAmount {
-  margin: 0.35rem 0 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.pitchFineNote {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-}
-
-.pitchFineRepeat {
-  margin: 0.55rem 0 0;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: var(--text-secondary);
-}
-
-.pitchFinesFoot {
-  margin: 0.75rem 0 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.pitchBody {
+.pitch p {
   margin: 0 0 1rem;
   font-size: clamp(0.95rem, 2.4vw, 1.05rem);
   line-height: 1.55;
@@ -219,39 +112,13 @@
   text-wrap: pretty;
 }
 
-.pitchOffer {
-  padding: 1rem 1.15rem;
-  border-radius: 16px;
-  border-left: 3px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-}
-
-.pitchOfferTitle {
-  margin: 0 0 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.pitchOfferText {
-  margin: 0 0 0.55rem;
-  font-size: 0.95rem;
-  line-height: 1.55;
-  color: var(--text);
-}
-
-.pitchOfferText:last-child {
+.pitch p:last-child {
   margin-bottom: 0;
 }
 
-.pitchLegal {
-  margin: 1rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--text-secondary);
-  opacity: 0.9;
+.pitchNote {
+  font-size: 0.85rem !important;
+  opacity: 0.92;
 }
 
 .panel {
