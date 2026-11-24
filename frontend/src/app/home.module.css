@@ -29,7 +29,7 @@
 
 .hero {
   text-align: center;
-  margin: 0 auto 2.75rem;
+  margin: 0 auto 1.75rem;
   max-width: 36rem;
   padding: 0 0.5rem;
 }
@@ -95,7 +95,7 @@
 }
 
 .pitch {
-  margin-bottom: 1.35rem;
+  margin-top: 1.5rem;
   text-align: left;
 }
 

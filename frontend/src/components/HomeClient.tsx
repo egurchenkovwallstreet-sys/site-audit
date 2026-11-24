@@ -21,12 +21,12 @@ export function HomeClient() {
             <span className={styles.titleLineAccent}>онлайн · до 10 минут</span>
           </h1>
         </header>
-        <HomePitch />
         <div className={styles.panel}>
           <ScanForm
             onStarted={(id) => router.push(`/check/${id}`)}
           />
         </div>
+        <HomePitch />
         <p className={styles.scopeNote}>
           152‑ФЗ, 168‑ФЗ, SEO и техаудит (Nuclei). До 22 страниц (вход, ссылки,
           sitemap) и типовые адреса политики — без регистрации и ручного обхода.
