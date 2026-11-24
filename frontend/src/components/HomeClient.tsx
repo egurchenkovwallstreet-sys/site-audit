@@ -17,7 +17,10 @@ export function HomeClient() {
       <main className={styles.main}>
         <header className={styles.hero}>
           <h1 className={styles.title}>
-            <span className={styles.titleLine}>Проверка сайта по 152‑ФЗ</span>
+            <span className={styles.titleLine}>
+              Проверка сайта по 152‑ФЗ, 168‑ФЗ, SEO и техаудит на риски взлома
+              и утечки данных
+            </span>
             <span className={styles.titleLineAccent}>онлайн · до 10 минут</span>
           </h1>
         </header>
