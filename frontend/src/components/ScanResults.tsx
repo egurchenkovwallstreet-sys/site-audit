@@ -184,20 +184,27 @@ function fmtTotal(n: number): string {
   return n > 0 ? formatRubMax(n) : "—";
 }
 
-function vulnerabilityCountPhrase(n: number): string {
+function pluralRu(
+  n: number,
+  one: string,
+  few: string,
+  many: string,
+): string {
   const nAbs = Math.abs(n);
   const mod10 = nAbs % 10;
   const mod100 = nAbs % 100;
-  let word = "уязвимостей";
-  if (mod10 === 1 && mod100 !== 11) {
-    word = "уязвимость";
-  } else if (
-    mod10 >= 2 &&
-    mod10 <= 4 &&
-    (mod100 < 12 || mod100 > 14)
-  ) {
-    word = "уязвимости";
-  }
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
+function violationCountPhrase(n: number): string {
+  const word = pluralRu(n, "нарушение", "нарушения", "нарушений");
+  return `На вашем сайте выявлено ${n} ${word}, которые влекут к штрафам на сумму:`;
+}
+
+function vulnerabilityCountPhrase(n: number): string {
+  const word = pluralRu(n, "уязвимость", "уязвимости", "уязвимостей");
   return `На данный момент мы нашли ${n} ${word} на вашем сайте, в случае взлома и утечки данных вам грозит штраф`;
 }
 
@@ -221,12 +228,14 @@ function GrandTotalBlock({
   compliance,
   breach,
   breachCount,
+  complianceCount,
 }: {
   compliance: ReturnType<typeof complianceSanctionTotals>;
   breach: ReturnType<typeof breachSanctionTotals>;
   breachCount: number;
+  complianceCount: number;
 }) {
-  const complianceEmpty = compliance.ip === 0 && compliance.legal === 0;
+  const complianceEmpty = complianceCount === 0;
   const complianceColor = totalPenaltyColor(
     Math.max(compliance.ip, compliance.legal),
   );
@@ -249,9 +258,7 @@ function GrandTotalBlock({
       ) : (
         <>
           <p className={styles.totalSectionLeadUrgent}>
-            На вашем сайте выявлены нарушения, которые влекут к штрафам на
-            сумму{" "}
-            <span className={styles.totalSectionLeadEm}>до</span>:
+            {violationCountPhrase(complianceCount)}
           </p>
           <TotalsColumns ip={compliance.ip} legal={compliance.legal} />
         </>
@@ -744,6 +751,7 @@ export function ScanResults({
                 compliance={complianceSanctions}
                 breach={breachSanctions}
                 breachCount={breachFindings.length}
+                complianceCount={complianceFindings.length}
               />
             </div>
 
