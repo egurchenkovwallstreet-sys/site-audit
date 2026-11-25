@@ -6,10 +6,13 @@ export function HomePitch() {
       className={`${styles.panel} ${styles.pitch}`}
       aria-label="О сервисе"
     >
-      <p className={styles.pitchLead}>
-        Ваш сайт уже собирает ПДн? Вы уверены, что завтра вам не придёт штраф на{" "}
-        <span className={styles.pitchEm}>сотни тысяч</span>?
-      </p>
+      <div className={styles.pitchLead}>
+        <p className={styles.pitchLeadLine}>Ваш сайт уже собирает ПДн?</p>
+        <p className={styles.pitchLeadLine}>
+          Вы уверены, что завтра вам не придёт штраф на{" "}
+          <span className={styles.pitchEm}>сотни тысяч</span>?
+        </p>
+      </div>
       <p>
         С 2025–2026 пределы в КоАП выросли: для ООО типичный потолок — сотни
         тысяч, при повторе — до 500 000 ₽ и больше по тяжёлым составам; ИП чаще
