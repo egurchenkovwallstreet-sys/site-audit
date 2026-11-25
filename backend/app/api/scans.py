@@ -17,6 +17,7 @@ from app.services.outreach_message import (
     compose_outreach_letter,
     outreach_delivery_meta,
 )
+from app.reports.compose import compose_extended_report, compose_short_report
 from app.services.scan_runner import run_compliance_scan
 from app.services.smtp_send import (
     SmtpDeliveryError,
@@ -74,6 +75,15 @@ class OutreachEmailPreviewResponse(BaseModel):
     body: str
     can_send: bool
     test_inbox_url: str | None = None
+
+
+class PaidReportResponse(BaseModel):
+    variant: str
+    markdown: str
+    disclaimer: str = (
+        "Ориентиры по КоАП, не юридическая консультация. "
+        "Полная выдача — после оплаты тарифа (фаза B)."
+    )
 
 
 class PenaltySanctionsResponse(BaseModel):
@@ -235,6 +245,34 @@ def _contact_emails_from_scan(scan: Scan) -> list[str]:
         return [str(e).strip().lower() for e in emails if e]
     except (json.JSONDecodeError, TypeError, ValueError):
         return []
+
+
+@router.get("/{scan_id}/paid-report", response_model=PaidReportResponse)
+async def paid_report_preview(
+    scan_id: int,
+    variant: str = "short",
+    session: AsyncSession = Depends(get_db),
+) -> PaidReportResponse:
+    scan = await session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Скан не найден")
+    if scan.status != ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Отчёт доступен после завершения проверки.",
+        )
+    if variant not in ("short", "extended"):
+        raise HTTPException(
+            status_code=400,
+            detail="variant должен быть short или extended",
+        )
+    findings = await _scan_findings(session, scan_id)
+    markdown = (
+        compose_extended_report(scan, findings)
+        if variant == "extended"
+        else compose_short_report(scan, findings)
+    )
+    return PaidReportResponse(variant=variant, markdown=markdown)
 
 
 @router.get("/{scan_id}/outreach-email-preview", response_model=OutreachEmailPreviewResponse)
