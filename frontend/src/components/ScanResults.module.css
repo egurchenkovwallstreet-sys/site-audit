@@ -31,9 +31,7 @@
 }
 
 .headBtnShare,
-.headBtnHome,
-.headBtnReportShort,
-.headBtnReportExt {
+.headBtnHome {
   min-height: calc(44px * var(--ui));
   padding: 0 calc(1rem * var(--ui));
   border-radius: calc(12px * var(--ui));
@@ -45,52 +43,74 @@
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
+    color 0.2s ease;
 }
 
-.headBtnReportShort,
-.headBtnReportExt {
-  border-width: 1px;
-  border-style: solid;
+.reportDownloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.65rem * var(--ui));
+  justify-content: center;
+  margin: calc(1.35rem * var(--ui)) 0 calc(1.75rem * var(--ui));
 }
 
-.headBtnReportShort:disabled,
-.headBtnReportExt:disabled {
-  opacity: 0.65;
+.reportBtnShort,
+.reportBtnExt {
+  flex: 1 1 calc(13rem * var(--ui));
+  min-height: calc(50px * var(--ui));
+  padding: calc(0.65rem * var(--ui)) calc(1.15rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  font-size: calc(0.92rem * var(--ui));
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: center;
+  transition:
+    filter 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.reportBtnShort:disabled,
+.reportBtnExt:disabled {
+  opacity: 0.7;
   cursor: wait;
 }
 
-.headBtnReportShort {
-  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
-  background: color-mix(in srgb, var(--surface) 92%, var(--text) 8%);
-  color: var(--text);
+/* Светло-зелёная заливка — краткий отчёт */
+.reportBtnShort {
+  background: color-mix(in srgb, var(--ok) 38%, var(--surface));
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--border));
+  color: color-mix(in srgb, var(--text) 88%, #0a3d1a);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ok) 22%, transparent);
+}
+
+[data-theme="dark"] .reportBtnShort {
+  color: color-mix(in srgb, #e8ffe8 92%, var(--text));
+}
+
+.reportBtnShort:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* Ярко-зелёная заливка — расширенный отчёт */
+.reportBtnExt {
+  background: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 70%, #0a5c22);
+  color: #0a2e14;
   box-shadow:
-    0 1px 0 color-mix(in srgb, #fff 12%, transparent),
-    0 4px 14px color-mix(in srgb, var(--text) 8%, transparent);
+    0 4px 20px color-mix(in srgb, var(--ok) 45%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 35%, transparent) inset;
 }
 
-.headBtnReportShort:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+[data-theme="dark"] .reportBtnExt {
+  color: #06240f;
 }
 
-.headBtnReportExt {
-  border-color: color-mix(in srgb, #a61c2f 55%, var(--border));
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, #a61c2f 88%, #1a1a1a) 0%,
-    color-mix(in srgb, #8b1f2e 75%, #2c2c2e) 100%
-  );
-  color: #fff;
-  box-shadow:
-    0 1px 0 color-mix(in srgb, #fff 18%, transparent),
-    0 6px 20px color-mix(in srgb, #a61c2f 28%, transparent);
-}
-
-.headBtnReportExt:hover:not(:disabled) {
-  filter: brightness(1.06);
+.reportBtnExt:hover:not(:disabled) {
+  filter: brightness(1.08);
   transform: translateY(-1px);
 }
 
@@ -117,12 +137,16 @@
 
 @media (max-width: 420px) {
   .headBtnShare,
-  .headBtnHome,
-  .headBtnReportShort,
-  .headBtnReportExt {
+  .headBtnHome {
     white-space: normal;
     text-align: center;
     max-width: 100%;
+  }
+
+  .reportBtnShort,
+  .reportBtnExt {
+    flex: 1 1 100%;
+    white-space: normal;
   }
 }
 

@@ -703,30 +703,6 @@ export function ScanResults({
       <div className={styles.head}>
         <h2 className={styles.title}>Результат</h2>
         <div className={styles.headActions}>
-          {revealOutcome && scan?.status === "completed" ? (
-            <>
-              <button
-                type="button"
-                className={styles.headBtnReportShort}
-                disabled={reportDownload !== "idle"}
-                onClick={() => downloadPaidReport("short")}
-              >
-                {reportDownload === "short"
-                  ? "Готовим файл…"
-                  : "Скачать отчёт"}
-              </button>
-              <button
-                type="button"
-                className={styles.headBtnReportExt}
-                disabled={reportDownload !== "idle"}
-                onClick={() => downloadPaidReport("extended")}
-              >
-                {reportDownload === "extended"
-                  ? "Готовим файл…"
-                  : "Скачать расширенный отчёт"}
-              </button>
-            </>
-          ) : null}
           <button
             type="button"
             className={styles.headBtnShare}
@@ -816,6 +792,33 @@ export function ScanResults({
                 breachCount={breachFindings.length}
                 complianceCount={complianceFindings.length}
               />
+            </div>
+
+            <div
+              className={styles.reportDownloadRow}
+              role="group"
+              aria-label="Скачать отчёт"
+            >
+              <button
+                type="button"
+                className={styles.reportBtnShort}
+                disabled={reportDownload !== "idle"}
+                onClick={() => downloadPaidReport("short")}
+              >
+                {reportDownload === "short"
+                  ? "Готовим файл…"
+                  : "Скачать отчёт"}
+              </button>
+              <button
+                type="button"
+                className={styles.reportBtnExt}
+                disabled={reportDownload !== "idle"}
+                onClick={() => downloadPaidReport("extended")}
+              >
+                {reportDownload === "extended"
+                  ? "Готовим файл…"
+                  : "Скачать расширенный отчёт"}
+              </button>
             </div>
 
             <section className={styles.sectionBlock} aria-labelledby="facts-heading">
