@@ -140,7 +140,7 @@ def _summary_money(findings: list[Finding]) -> str:
         f"при повторном нарушении: ИП — {_fmt_rub(sec['ip_repeat'])}, "
         f"юрлицо — {_fmt_rub(sec['legal_repeat'])}.",
         "",
-        f"Текст ст. 13.11 КоАП РФ: {KOAP_13_11_link('ч. 1')}",
+        f"Текст ст. 13.11 КоАП РФ: {koap_13_11_link('ч. 1')}",
         "",
     ]
     return "\n".join(lines)
