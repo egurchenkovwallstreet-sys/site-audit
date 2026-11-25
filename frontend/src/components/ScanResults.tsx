@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ScanResults.module.css";
 import {
+  isCriticalSummaryFinding,
   resolveRiskColor,
   severityLabel,
   sortFindings,
@@ -204,14 +205,29 @@ function pluralRu(
   return many;
 }
 
-function violationCountPhrase(n: number): string {
-  const word = pluralRu(n, "нарушение", "нарушения", "нарушений");
-  return `На вашем сайте выявлено ${n} ${word}, которые влекут к штрафам на сумму:`;
+function violationCountPhrase(total: number, critical: number): string {
+  if (critical > 0) {
+    const word = pluralRu(
+      critical,
+      "критическое нарушение",
+      "критических нарушения",
+      "критических нарушений",
+    );
+    return `На вашем сайте выявлено ${critical} ${word}, которые влекут к штрафам на сумму:`;
+  }
+  const word = pluralRu(total, "нарушение", "нарушения", "нарушений");
+  return `На вашем сайте выявлено ${total} ${word}, которые влекут к штрафам на сумму:`;
 }
 
-function vulnerabilityCountPhrase(n: number): string {
-  const word = pluralRu(n, "уязвимость", "уязвимости", "уязвимостей");
-  return `На данный момент мы нашли ${n} ${word} на вашем сайте, в случае взлома и утечки данных вам грозит штраф`;
+function vulnerabilityCountPhrase(total: number, critical: number): string {
+  const word = pluralRu(total, "уязвимость", "уязвимости", "уязвимостей");
+  const critLabel = pluralRu(
+    critical,
+    "критическая",
+    "критические",
+    "критических",
+  );
+  return `На данный момент всего выявлено ${total} ${word} на вашем сайте, из них ${critical} ${critLabel}, в случае взлома и утечки данных вам грозит штраф`;
 }
 
 function TotalsColumns({ ip, legal }: { ip: number; legal: number }) {
@@ -233,14 +249,19 @@ function TotalsColumns({ ip, legal }: { ip: number; legal: number }) {
 function GrandTotalBlock({
   compliance,
   breach,
-  breachCount,
-  complianceCount,
+  complianceFindings,
+  breachFindings,
 }: {
   compliance: ReturnType<typeof complianceSanctionTotals>;
   breach: ReturnType<typeof breachSanctionTotals>;
-  breachCount: number;
-  complianceCount: number;
+  complianceFindings: Finding[];
+  breachFindings: Finding[];
 }) {
+  const complianceCount = complianceFindings.length;
+  const breachCount = breachFindings.length;
+  const complianceCritical = complianceFindings.filter(isCriticalSummaryFinding)
+    .length;
+  const breachCritical = breachFindings.filter(isCriticalSummaryFinding).length;
   const complianceEmpty = complianceCount === 0;
   const complianceColor = totalPenaltyColor(
     Math.max(compliance.ip, compliance.legal),
@@ -264,7 +285,7 @@ function GrandTotalBlock({
       ) : (
         <>
           <p className={styles.totalSectionLeadUrgent}>
-            {violationCountPhrase(complianceCount)}
+            {violationCountPhrase(complianceCount, complianceCritical)}
           </p>
           <TotalsColumns ip={compliance.ip} legal={compliance.legal} />
         </>
@@ -280,7 +301,7 @@ function GrandTotalBlock({
       ) : (
         <>
           <p className={styles.totalSectionText}>
-            {vulnerabilityCountPhrase(breachCount)}
+            {vulnerabilityCountPhrase(breachCount, breachCritical)}
           </p>
           <TotalsColumns ip={breach.ip} legal={breach.legal} />
           <p className={styles.totalSectionRepeatLead}>
@@ -911,8 +932,8 @@ export function ScanResults({
               <GrandTotalBlock
                 compliance={complianceSanctions}
                 breach={breachSanctions}
-                breachCount={breachFindings.length}
-                complianceCount={complianceFindings.length}
+                complianceFindings={complianceFindings}
+                breachFindings={breachFindings}
               />
             </div>
 

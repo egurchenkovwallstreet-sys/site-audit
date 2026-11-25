@@ -13,6 +13,12 @@ const SEVERITY_LABEL: Record<string, string> = {
   low: "Низкий риск",
 };
 
+/** Критичные пункты в сводке «Итого»: красный риск и severity high/critical. */
+export function isCriticalSummaryFinding(f: FindingLike): boolean {
+  if (resolveRiskColor(f) !== "red") return false;
+  return f.severity === "high" || f.severity === "critical";
+}
+
 export function resolveRiskColor(f: FindingLike): RiskColor {
   if (f.color === "green" || f.color === "yellow" || f.color === "red") {
     return f.color;
