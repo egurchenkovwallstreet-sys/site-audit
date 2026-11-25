@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Бюджет одного скана (сек): обход + compliance + passive + Nuclei
     scan_time_budget_sec: int = 600
-    scan_max_pages: int = 22
+    scan_max_pages: int = 30
 
     nuclei_enabled: bool = True
     nuclei_timeout_sec: int = 120

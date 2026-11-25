@@ -74,9 +74,8 @@ const STEPS = [
   "SEO и технические риски",
 ] as const;
 
-/** Ориентир 7–10 мин (бюджет скана на сервере до 10 мин). */
-const ESTIMATE_MIN_MS = 7 * 60 * 1000;
-const ESTIMATE_MAX_MS = 10 * 60 * 1000;
+/** Фиксированный таймер на экране: 7:59 (бюджет скана на сервере до 10 мин). */
+const SCAN_COUNTDOWN_MS = 7 * 60 * 1000 + 59 * 1000;
 const TICK_MS = 100;
 const COUNTDOWN_ZERO_MS = 45;
 /** Доп. ожидание, если основной таймер истёк, а API ещё running. */
@@ -85,9 +84,8 @@ const MAX_AUTO_RESTARTS = 2;
 const POLL_MS = 3000;
 const POLL_MS_EXTEND = 2000;
 
-function initialEstimateMs(scanId: number): number {
-  const spread = ESTIMATE_MAX_MS - ESTIMATE_MIN_MS;
-  return ESTIMATE_MIN_MS + ((scanId * 2_654_435_761) >>> 0) % spread;
+function scanCountdownMs(): number {
+  return SCAN_COUNTDOWN_MS;
 }
 
 function formatCountdownTenths(remainingMs: number): string {
@@ -107,14 +105,14 @@ function useScanCountdown(
   accelerating: boolean,
 ) {
   const deadlineRef = useRef<number | null>(null);
-  const remainingRef = useRef(initialEstimateMs(scanId));
+  const remainingRef = useRef(scanCountdownMs());
   const accelLambdaRef = useRef<number | null>(null);
-  const [remainingMs, setRemainingMs] = useState(() => initialEstimateMs(scanId));
+  const [remainingMs, setRemainingMs] = useState(scanCountdownMs);
   const [finishing, setFinishing] = useState(false);
   const [zero, setZero] = useState(false);
 
   useEffect(() => {
-    const est = initialEstimateMs(scanId);
+    const est = scanCountdownMs();
     deadlineRef.current = Date.now() + est;
     remainingRef.current = est;
     accelLambdaRef.current = null;
@@ -643,16 +641,17 @@ export function ScanResults({
     accelerating,
   );
 
+  /** Ранняя готовность API — досчитываем таймер экспонентой до нуля, потом результат. */
   useEffect(() => {
-    if (!scanTerminal || countdownSettled || accelerating) {
+    if (scan?.status !== "completed" || countdownSettled || accelerating) {
       return;
     }
-    if (remainingMs > COUNTDOWN_ZERO_MS + 30) {
+    if (remainingMs > COUNTDOWN_ZERO_MS) {
       setAccelerating(true);
     } else {
       setCountdownSettled(true);
     }
-  }, [scanTerminal, remainingMs, countdownSettled, accelerating]);
+  }, [scan?.status, countdownSettled, accelerating, remainingMs]);
 
   useEffect(() => {
     if (zero && accelerating) {
@@ -845,8 +844,8 @@ export function ScanResults({
                 : accelerating
                   ? "Ускоряем отсчёт — отчёт уже готов"
                   : finishing
-                    ? "Проверка может занять до 10 минут — ждём сервер…"
-                    : "Ориентир по времени (до 10 минут)"}
+                    ? "Проверка может занять дольше 7:59 — ждём сервер…"
+                    : "Ориентир по времени — 7:59"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>

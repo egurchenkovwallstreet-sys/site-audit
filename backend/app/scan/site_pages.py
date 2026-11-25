@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from app.compliance.privacy_detection import _same_origin
 
-MAX_SCAN_PAGES = 15
+MAX_SCAN_PAGES = 30
 SITEMAP_LOC = re.compile(r"<loc>\s*([^<]+)\s*</loc>", re.IGNORECASE)
 
 SKIP_SUFFIXES = (

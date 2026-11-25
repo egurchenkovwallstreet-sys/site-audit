@@ -120,7 +120,7 @@
 - [x] `backend/app/compliance/checker.py` — политика, cookie, формы, иностранные SDK.
 - [x] **Глубина A1–A3** (`docs/scan-depth-roadmap.md`): политика ч.4, техзаголовки, трекеры; формы/реквизиты; обход контактов и legal-URL; при баннере — раскрытие cookie (`cookie_policy_*`).
 - [x] **B0 security**: пассивные пробы типовых утечек (`.git`, `.env`, …) и mixed content на HTTPS-страницах.
-- [x] **B1 / бюджет 10 мин**: Nuclei в скане, 22 стр., Playwright 14, CORS/COOP/CORP, UI «до 10 мин».
+- [x] **B1 / бюджет 10 мин**: Nuclei в скане, **30** приор. стр., Playwright 14, CORS/COOP/CORP, UI таймер **7:59** + экспон. досчёт при раннем `completed`.
 - [x] **168-ФЗ + SEO**: `fz168_checker.py`, `seo_checker.py`, блок UI «SEO и разметка».
 - [x] **SEO лендинга**: metadata/OG/JSON-LD, `app/robots.ts`, `app/sitemap.ts`, `docs/seo-setup.md`, `NEXT_PUBLIC_SITE_URL`.
 - [x] Скачивание отчётов HTML: кнопки на `/check/{id}`, API `paid-report/download` (short/extended), печать в PDF в браузере.
@@ -131,7 +131,7 @@
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.
 - [x] Darom (`https://darom-app.online/`) — без ложных политика/cookie (проверено на VPS).
 - [x] E-mail из Flutter-бандла (`main.dart.js`), в т.ч. Darom — `email_discover.py` + кэш SPA-скана.
-- [x] Таймер 3–5 мин на экране скана, ускорение при раннем `completed` (деплой `b4f0132`).
+- [x] Таймер **7:59** на экране скана, обязательное экспон. ускорение до нуля при раннем `completed`.
 - [x] Кнопка «Отправить письмо» + API preview outreach (`docs/smtp-setup.md`).
 - [x] Базовый прогон `regression_scan.py` на VPS.
 
