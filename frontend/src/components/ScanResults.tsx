@@ -48,7 +48,15 @@ type Finding = {
   legal_article: string | null;
   max_penalty: number | null;
   color: string | null;
+  remediation?: string | null;
   sanctions?: PenaltySanctions | null;
+};
+
+const SEO_PRIORITY_LABEL: Record<string, string> = {
+  critical: "Высокий приоритет",
+  high: "Высокий приоритет",
+  medium: "Средний приоритет",
+  low: "Низкий приоритет",
 };
 
 const STATUS_TEXT: Record<string, string> = {
@@ -264,6 +272,34 @@ function GrandTotalBlock({
       )}
     </div>
   </div>
+  );
+}
+
+function SeoRecommendationItems({ items }: { items: Finding[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+  return (
+    <ul className={styles.list}>
+      {items.map((f) => (
+        <li key={f.id} className={`${styles.item} ${styles.itemSeo}`}>
+          <div className={styles.itemHead}>
+            <p className={styles.badge}>Рекомендация · SEO</p>
+            <span className={styles.seoPill}>
+              {SEO_PRIORITY_LABEL[f.severity] ?? "Рекомендация"}
+            </span>
+          </div>
+          <p className={styles.itemTitle}>{f.title}</p>
+          <p className={styles.itemMeta}>{f.description}</p>
+          {f.remediation ? (
+            <p className={styles.itemRemediation}>
+              <span className={styles.itemRemediationLead}>Что сделать: </span>
+              {f.remediation}
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -736,14 +772,15 @@ export function ScanResults({
                 SEO и разметка
               </h3>
               <p className={styles.sectionHint}>
-                Title, description, H1, robots/sitemap, canonical — по открытому
-                HTML. Не гарантирует позиции в поиске.
+                Рекомендации по title, description, H1, robots/sitemap,
+                canonical — по открытому HTML. Без штрафов и юридических
+                рисков, не гарантирует позиции в поиске.
               </p>
               {seoFindings.length > 0 ? (
-                <FindingItems items={seoFindings} />
+                <SeoRecommendationItems items={seoFindings} />
               ) : (
                 <p className={styles.sectionEmpty}>
-                  Критичных SEO-замечаний не найдено.
+                  Рекомендаций по SEO не найдено.
                 </p>
               )}
             </section>

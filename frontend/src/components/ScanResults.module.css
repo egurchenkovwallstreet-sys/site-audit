@@ -422,6 +422,34 @@
   background: color-mix(in srgb, var(--ok) 4%, var(--surface));
 }
 
+.itemSeo {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.seoPill {
+  font-size: calc(0.68rem * var(--ui));
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: calc(0.18rem * var(--ui)) calc(0.6rem * var(--ui));
+  border-radius: calc(6px * var(--ui));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  color: color-mix(in srgb, var(--text) 35%, var(--accent));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.itemRemediation {
+  margin: calc(0.65rem * var(--ui)) 0 0;
+  font-size: calc(0.88rem * var(--ui));
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.itemRemediationLead {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 .itemHead {
   display: flex;
   flex-wrap: wrap;
