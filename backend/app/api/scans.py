@@ -5,6 +5,7 @@ import time
 
 from email.message import EmailMessage
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from app.services.outreach_message import (
     outreach_delivery_meta,
 )
 from app.reports.compose import compose_extended_report, compose_short_report
+from app.reports.html_render import render_paid_report_html
 from app.services.scan_runner import run_compliance_scan
 from app.services.smtp_send import (
     SmtpDeliveryError,
@@ -273,6 +275,36 @@ async def paid_report_preview(
         else compose_short_report(scan, findings)
     )
     return PaidReportResponse(variant=variant, markdown=markdown)
+
+
+@router.get("/{scan_id}/paid-report/download")
+async def paid_report_download(
+    scan_id: int,
+    variant: str = "short",
+    session: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    scan = await session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Скан не найден")
+    if scan.status != ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Отчёт доступен после завершения проверки.",
+        )
+    if variant not in ("short", "extended"):
+        raise HTTPException(
+            status_code=400,
+            detail="variant должен быть short или extended",
+        )
+    findings = await _scan_findings(session, scan_id)
+    content, filename = render_paid_report_html(scan, findings, variant)
+    return HTMLResponse(
+        content=content,
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @router.get("/{scan_id}/outreach-email-preview", response_model=OutreachEmailPreviewResponse)

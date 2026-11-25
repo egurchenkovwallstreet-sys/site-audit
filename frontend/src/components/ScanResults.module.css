@@ -31,7 +31,9 @@
 }
 
 .headBtnShare,
-.headBtnHome {
+.headBtnHome,
+.headBtnReportShort,
+.headBtnReportExt {
   min-height: calc(44px * var(--ui));
   padding: 0 calc(1rem * var(--ui));
   border-radius: calc(12px * var(--ui));
@@ -43,7 +45,53 @@
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.headBtnReportShort,
+.headBtnReportExt {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.headBtnReportShort:disabled,
+.headBtnReportExt:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.headBtnReportShort {
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+  background: color-mix(in srgb, var(--surface) 92%, var(--text) 8%);
+  color: var(--text);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    0 4px 14px color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.headBtnReportShort:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.headBtnReportExt {
+  border-color: color-mix(in srgb, #a61c2f 55%, var(--border));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, #a61c2f 88%, #1a1a1a) 0%,
+    color-mix(in srgb, #8b1f2e 75%, #2c2c2e) 100%
+  );
+  color: #fff;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent),
+    0 6px 20px color-mix(in srgb, #a61c2f 28%, transparent);
+}
+
+.headBtnReportExt:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
 }
 
 .headBtnShare {
@@ -69,7 +117,9 @@
 
 @media (max-width: 420px) {
   .headBtnShare,
-  .headBtnHome {
+  .headBtnHome,
+  .headBtnReportShort,
+  .headBtnReportExt {
     white-space: normal;
     text-align: center;
     max-width: 100%;

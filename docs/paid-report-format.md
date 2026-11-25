@@ -28,6 +28,13 @@ SEO-пункты: явно указать, что штрафы КоАП по st.
 
 Реализация: `backend/app/reports/compose.py`.
 
-## PDF
+## Скачивание в UI
 
-Фаза B: Markdown → HTML → PDF (WeasyPrint или аналог), без изменения текстовой логики.
+После завершения скана на `/check/{id}`:
+
+- **Скачать отчёт** — `GET /api/scans/{id}/paid-report/download?variant=short` (HTML, вложение).
+- **Скачать расширенный отчёт** — `variant=extended`.
+
+Файл `.html` с типографикой и печатными стилями; PDF — через «Печать → Сохранить как PDF» в браузере.
+
+Фаза B: тот же HTML; опционально серверный PDF (WeasyPrint).

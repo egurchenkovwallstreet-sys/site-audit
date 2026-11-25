@@ -523,6 +523,9 @@ export function ScanResults({
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
+  const [reportDownload, setReportDownload] = useState<
+    "idle" | "short" | "extended"
+  >("idle");
   const [progressStep, setProgressStep] = useState(0);
   const [accelerating, setAccelerating] = useState(false);
   const [countdownSettled, setCountdownSettled] = useState(false);
@@ -663,11 +666,67 @@ export function ScanResults({
     }
   }
 
+  async function downloadPaidReport(variant: "short" | "extended") {
+    setReportDownload(variant);
+    try {
+      const res = await fetch(
+        `/api/scans/${scanId}/paid-report/download?variant=${variant}`,
+      );
+      if (!res.ok) {
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = `otchet-${scanId}-${variant}.html`;
+      if (disposition) {
+        const m = /filename="([^"]+)"/.exec(disposition);
+        if (m?.[1]) {
+          filename = m[1];
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setReportDownload("idle");
+    }
+  }
+
   return (
     <section className={styles.wrap}>
       <div className={styles.head}>
         <h2 className={styles.title}>Результат</h2>
         <div className={styles.headActions}>
+          {revealOutcome && scan?.status === "completed" ? (
+            <>
+              <button
+                type="button"
+                className={styles.headBtnReportShort}
+                disabled={reportDownload !== "idle"}
+                onClick={() => downloadPaidReport("short")}
+              >
+                {reportDownload === "short"
+                  ? "Готовим файл…"
+                  : "Скачать отчёт"}
+              </button>
+              <button
+                type="button"
+                className={styles.headBtnReportExt}
+                disabled={reportDownload !== "idle"}
+                onClick={() => downloadPaidReport("extended")}
+              >
+                {reportDownload === "extended"
+                  ? "Готовим файл…"
+                  : "Скачать расширенный отчёт"}
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className={styles.headBtnShare}
