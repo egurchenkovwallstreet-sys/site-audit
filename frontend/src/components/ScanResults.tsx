@@ -6,9 +6,6 @@ import {
   resolveRiskColor,
   severityLabel,
   sortFindings,
-  sumBreachPenalties,
-  sumCompliancePenalties,
-  totalPenaltyColor,
   type RiskColor,
 } from "@/lib/findingRisk";
 import {
@@ -174,63 +171,41 @@ const RISK_PILL_CLASS: Record<RiskColor, string> = {
   green: styles.riskPillGreen,
 };
 
-function SanctionTotalsPanel({
-  title,
-  totals,
-  variant,
+function fmtTotal(n: number): string {
+  return n > 0 ? formatRubMax(n) : "—";
+}
+
+function GrandTotalBlock({
+  compliance,
+  breach,
 }: {
-  title: string;
-  totals: ReturnType<typeof complianceSanctionTotals>;
-  variant: RiskColor;
+  compliance: ReturnType<typeof complianceSanctionTotals>;
+  breach: ReturnType<typeof breachSanctionTotals>;
 }) {
-  const hasPrimary = totals.ip > 0 || totals.legal > 0;
-  const hasRepeat = totals.ipRepeat > 0 || totals.legalRepeat > 0;
-  if (!hasPrimary) {
-    return null;
-  }
   return (
-    <div
-      className={`${styles.sanctionTotals} ${styles[`total_${variant}`]}`}
-      role="status"
-    >
-      <p className={styles.sanctionTotalsTitle}>{title}</p>
-      <table className={styles.sanctionTotalsTable}>
+    <div className={styles.grandTotal}>
+      <p className={styles.grandTotalTitle}>Итого</p>
+      <table className={styles.grandTotalTable}>
         <thead>
           <tr>
-            <th scope="col">Субъект</th>
-            <th scope="col">Первичное (сумма потолков)</th>
-            <th scope="col">Повторное (сумма потолков)</th>
+            <th scope="col" />
+            <th scope="col">ИП</th>
+            <th scope="col">Юрлицо</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <th scope="row">ИП</th>
-            <td>
-              {totals.ip > 0 ? formatRubMax(totals.ip) : "—"}
-            </td>
-            <td>
-              {hasRepeat && totals.ipRepeat > 0
-                ? formatRubMax(totals.ipRepeat)
-                : "—"}
-            </td>
+            <th scope="row">Обнаружено</th>
+            <td>{fmtTotal(compliance.ip)}</td>
+            <td>{fmtTotal(compliance.legal)}</td>
           </tr>
           <tr>
-            <th scope="row">Юрлицо</th>
-            <td>
-              {totals.legal > 0 ? formatRubMax(totals.legal) : "—"}
-            </td>
-            <td>
-              {hasRepeat && totals.legalRepeat > 0
-                ? formatRubMax(totals.legalRepeat)
-                : "—"}
-            </td>
+            <th scope="row">При взломе</th>
+            <td>{fmtTotal(breach.ip)}</td>
+            <td>{fmtTotal(breach.legal)}</td>
           </tr>
         </tbody>
       </table>
-      <p className={styles.sanctionTotalsNote}>
-        Складываем верхние границы по каждому пункту — фактический штраф один на
-        состав, диапазоны в КоАП не суммируются в одну выплату.
-      </p>
     </div>
   );
 }
@@ -521,47 +496,25 @@ export function ScanResults({
   const busy = countdownActive;
   const revealOutcome = scanTerminal && countdownSettled;
 
-  const {
-    complianceFindings,
-    seoFindings,
-    breachFindings,
-    accessFindings,
-    riskSummary,
-  } = useMemo(() => {
-    const accessFindings = findings.filter((f) => f.type === "access");
-    const complianceFindings = sortFindings(
-      findings.filter((f) => f.type === "compliance"),
-    );
-    const seoFindings = sortFindings(
-      findings.filter((f) => f.type === "seo"),
-    );
-    const breachFindings = sortFindings(
-      findings.filter((f) => f.type === "security"),
-    );
-    const complianceTotal = sumCompliancePenalties(findings);
-    const breachTotal = sumBreachPenalties(findings);
-    let red = 0;
-    let yellow = 0;
-    for (const f of findings) {
-      const c = resolveRiskColor(f);
-      if (c === "red") red += 1;
-      if (c === "yellow") yellow += 1;
-    }
-    return {
-      accessFindings,
-      complianceFindings,
-      seoFindings,
-      breachFindings,
-      riskSummary: {
-        red,
-        yellow,
-        complianceTotal,
-        breachTotal,
-        complianceColor: totalPenaltyColor(complianceTotal),
-        breachColor: totalPenaltyColor(breachTotal),
-      },
-    };
-  }, [findings]);
+  const { complianceFindings, seoFindings, breachFindings, accessFindings } =
+    useMemo(() => {
+      const accessFindings = findings.filter((f) => f.type === "access");
+      const complianceFindings = sortFindings(
+        findings.filter((f) => f.type === "compliance"),
+      );
+      const seoFindings = sortFindings(
+        findings.filter((f) => f.type === "seo"),
+      );
+      const breachFindings = sortFindings(
+        findings.filter((f) => f.type === "security"),
+      );
+      return {
+        accessFindings,
+        complianceFindings,
+        seoFindings,
+        breachFindings,
+      };
+    }, [findings]);
 
   const complianceRan = (scan?.context?.pages_checked ?? 0) > 0;
   const complianceClean =
@@ -676,27 +629,10 @@ export function ScanResults({
         ) : (
           <>
             <div className={styles.totalsBlock} role="status">
-              <SanctionTotalsPanel
-                title="Факты по 152‑ФЗ: ориентиры штрафов по КоАП"
-                totals={complianceSanctions}
-                variant={riskSummary.complianceColor}
+              <GrandTotalBlock
+                compliance={complianceSanctions}
+                breach={breachSanctions}
               />
-              {complianceSanctions.legal === 0 &&
-              complianceSanctions.ip === 0 ? (
-                <p className={styles.sectionEmpty}>
-                  Нарушений со штрафом по КоАП не найдено.
-                </p>
-              ) : null}
-              <SanctionTotalsPanel
-                title="Прогноз (безопасность): если сценарий реализуется"
-                totals={breachSanctions}
-                variant={riskSummary.breachColor}
-              />
-              <p className={styles.totalNote}>
-                Верхний блок — зафиксированные нарушения. Нижний — при
-                эксплуатации уязвимостей. Размер назначает орган в пределах
-                статьи КоАП.
-              </p>
             </div>
 
             <section className={styles.sectionBlock} aria-labelledby="facts-heading">
