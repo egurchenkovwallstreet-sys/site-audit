@@ -19,8 +19,9 @@
 .headActions {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(0.25rem * var(--ui));
+  gap: calc(0.55rem * var(--ui));
   justify-content: flex-end;
+  align-items: stretch;
 }
 
 .title {
@@ -29,13 +30,50 @@
   letter-spacing: -0.02em;
 }
 
-.reset {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font-size: calc(0.9rem * var(--ui));
-  cursor: pointer;
+.headBtnShare,
+.headBtnHome {
   min-height: calc(44px * var(--ui));
+  padding: 0 calc(1rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  font-size: calc(0.88rem * var(--ui));
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.headBtnShare {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.headBtnShare:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--input-bg));
+}
+
+.headBtnHome {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+}
+
+.headBtnHome:hover {
+  background: var(--accent-hover);
+}
+
+@media (max-width: 420px) {
+  .headBtnShare,
+  .headBtnHome {
+    white-space: normal;
+    text-align: center;
+    max-width: 100%;
+  }
 }
 
 .url {

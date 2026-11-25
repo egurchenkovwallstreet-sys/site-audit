@@ -416,7 +416,7 @@ export function ScanResults({
 }) {
   const [scan, setScan] = useState<Scan | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
   const [progressStep, setProgressStep] = useState(0);
   const [accelerating, setAccelerating] = useState(false);
   const [countdownSettled, setCountdownSettled] = useState(false);
@@ -537,11 +537,21 @@ export function ScanResults({
 
   const displayUrl = targetUrl || scan?.target_url || "…";
 
-  async function copyShareLink() {
+  async function shareResult() {
+    const url = window.location.href;
+    const title = "Результат проверки сайта";
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      setLinkCopied(true);
-      window.setTimeout(() => setLinkCopied(false), 2500);
+      await navigator.clipboard.writeText(url);
+      setShareFeedback("copied");
+      window.setTimeout(() => setShareFeedback("idle"), 2500);
     } catch {
       /* clipboard denied */
     }
@@ -554,13 +564,19 @@ export function ScanResults({
         <div className={styles.headActions}>
           <button
             type="button"
-            className={styles.reset}
-            onClick={copyShareLink}
+            className={styles.headBtnShare}
+            onClick={shareResult}
           >
-            {linkCopied ? "Ссылка скопирована" : "Скопировать ссылку"}
+            {shareFeedback === "copied"
+              ? "Ссылка скопирована"
+              : "Поделиться результатом"}
           </button>
-          <button type="button" className={styles.reset} onClick={onReset}>
-            Главная
+          <button
+            type="button"
+            className={styles.headBtnHome}
+            onClick={onReset}
+          >
+            На главную
           </button>
         </div>
       </div>
