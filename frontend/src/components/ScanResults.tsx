@@ -277,6 +277,10 @@ function GrandTotalBlock({
             {vulnerabilityCountPhrase(breachCount)}
           </p>
           <TotalsColumns ip={breach.ip} legal={breach.legal} />
+          <p className={styles.totalSectionRepeatLead}>
+            В случае повторного нарушения штрафы могут быть:
+          </p>
+          <TotalsColumns ip={breach.ipRepeat} legal={breach.legalRepeat} />
         </>
       )}
     </div>

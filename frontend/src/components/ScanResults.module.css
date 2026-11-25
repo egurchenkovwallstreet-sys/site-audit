@@ -257,6 +257,15 @@
   margin-top: calc(0.85rem * var(--ui));
 }
 
+.totalSectionRepeatLead {
+  margin: calc(1.05rem * var(--ui)) 0 calc(0.85rem * var(--ui));
+  font-size: calc(1.02rem * var(--ui));
+  line-height: 1.48;
+  color: var(--text);
+  text-align: center;
+  text-wrap: pretty;
+}
+
 .totalSectionLead + .totalFigures,
 .totalSectionLeadUrgent + .totalFigures {
   margin-top: 0;
