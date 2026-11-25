@@ -176,15 +176,16 @@
 }
 
 .grandTotalTitle {
-  margin: 0 0 calc(0.75rem * var(--ui));
-  font-size: calc(1.05rem * var(--ui));
+  margin: 0 0 calc(0.9rem * var(--ui));
+  font-size: calc(1.2rem * var(--ui));
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .totalSection {
-  padding: calc(0.9rem * var(--ui)) calc(1rem * var(--ui));
-  border-radius: calc(12px * var(--ui));
+  padding: calc(1.15rem * var(--ui)) calc(1.1rem * var(--ui))
+    calc(1.2rem * var(--ui));
+  border-radius: calc(14px * var(--ui));
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 96%, var(--bg));
 }
@@ -216,60 +217,88 @@
 
 .totalSectionText {
   margin: 0;
-  font-size: calc(0.92rem * var(--ui));
-  line-height: 1.5;
+  font-size: calc(1.02rem * var(--ui));
+  line-height: 1.48;
   color: var(--text);
+  text-align: center;
+  text-wrap: pretty;
 }
 
 .totalSectionLead {
-  margin: 0 0 calc(0.55rem * var(--ui));
-  font-size: calc(0.88rem * var(--ui));
+  margin: 0 0 calc(1rem * var(--ui));
+  font-size: calc(1.02rem * var(--ui));
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.42;
+  color: var(--text);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.totalSectionText + .totalFigures {
+  margin-top: calc(0.85rem * var(--ui));
+}
+
+.totalSectionLead + .totalFigures {
+  margin-top: 0;
+}
+
+.totalFigures {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+.totalFigure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(0.4rem * var(--ui));
+  padding: calc(0.35rem * var(--ui)) calc(0.5rem * var(--ui));
+  text-align: center;
+  min-height: calc(4.25rem * var(--ui));
+}
+
+.totalFigureDivider {
+  width: 1px;
+  align-self: stretch;
+  background: color-mix(in srgb, var(--text) 12%, var(--border));
+  margin: calc(0.15rem * var(--ui)) 0;
+}
+
+.totalFigureLabel {
+  font-size: calc(0.8rem * var(--ui));
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.totalFigureValue {
+  font-size: clamp(
+    calc(1.25rem * var(--ui)),
+    4.2vw,
+    calc(1.55rem * var(--ui))
+  );
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
   color: var(--text);
 }
 
-.totalSectionText + .grandTotalTable {
-  margin-top: calc(0.65rem * var(--ui));
+.totalSection_green .totalFigureValue {
+  color: color-mix(in srgb, var(--text) 50%, var(--ok));
 }
 
-.grandTotalTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(0.92rem * var(--ui));
+.totalSection_yellow .totalFigureValue {
+  color: color-mix(in srgb, var(--text) 55%, var(--warn));
 }
 
-.grandTotalTable th,
-.grandTotalTable td {
-  text-align: left;
-  padding: calc(0.45rem * var(--ui)) calc(0.5rem * var(--ui)) calc(0.45rem * var(--ui)) 0;
-  vertical-align: middle;
-}
-
-.grandTotalTable thead th {
-  font-size: calc(0.75rem * var(--ui));
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.grandTotalTable tbody th[scope="row"] {
-  font-weight: 500;
-  color: var(--text-secondary);
-  padding-right: calc(0.75rem * var(--ui));
-  white-space: nowrap;
-}
-
-.grandTotalTable tbody td {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
-.grandTotalAmount {
-  font-size: calc(1.08rem * var(--ui));
-  font-weight: 700;
+.totalSection_red .totalFigureValue {
+  color: color-mix(in srgb, var(--text) 48%, var(--danger));
 }
 
 .totalRow {

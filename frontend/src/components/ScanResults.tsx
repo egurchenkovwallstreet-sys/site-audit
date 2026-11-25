@@ -195,20 +195,17 @@ function vulnerabilityCountPhrase(n: number): string {
 
 function TotalsColumns({ ip, legal }: { ip: number; legal: number }) {
   return (
-    <table className={styles.grandTotalTable}>
-      <thead>
-        <tr>
-          <th scope="col">ИП</th>
-          <th scope="col">Юрлицо</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td className={styles.grandTotalAmount}>{fmtTotal(ip)}</td>
-          <td className={styles.grandTotalAmount}>{fmtTotal(legal)}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div className={styles.totalFigures} role="group" aria-label="Ориентиры штрафов">
+      <div className={styles.totalFigure}>
+        <span className={styles.totalFigureLabel}>ИП</span>
+        <span className={styles.totalFigureValue}>{fmtTotal(ip)}</span>
+      </div>
+      <div className={styles.totalFigureDivider} aria-hidden />
+      <div className={styles.totalFigure}>
+        <span className={styles.totalFigureLabel}>Юрлицо</span>
+        <span className={styles.totalFigureValue}>{fmtTotal(legal)}</span>
+      </div>
+    </div>
   );
 }
 
