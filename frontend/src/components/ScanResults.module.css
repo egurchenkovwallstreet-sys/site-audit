@@ -176,10 +176,61 @@
 }
 
 .grandTotalTitle {
-  margin: 0 0 calc(0.65rem * var(--ui));
+  margin: 0 0 calc(0.75rem * var(--ui));
   font-size: calc(1.05rem * var(--ui));
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.totalSection {
+  padding: calc(0.9rem * var(--ui)) calc(1rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, var(--bg));
+}
+
+.totalSection + .totalSection {
+  margin-top: calc(0.75rem * var(--ui));
+}
+
+.totalSection_green {
+  border-color: color-mix(in srgb, var(--ok) 48%, var(--border));
+  background: color-mix(in srgb, var(--ok) 10%, var(--surface));
+  box-shadow: 0 0 calc(22px * var(--ui))
+    color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.totalSection_yellow {
+  border-color: color-mix(in srgb, var(--warn) 48%, var(--border));
+  background: color-mix(in srgb, var(--warn) 9%, var(--surface));
+  box-shadow: 0 0 calc(22px * var(--ui))
+    color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+.totalSection_red {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  box-shadow: 0 0 calc(22px * var(--ui))
+    color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.totalSectionText {
+  margin: 0;
+  font-size: calc(0.92rem * var(--ui));
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.totalSectionLead {
+  margin: 0 0 calc(0.55rem * var(--ui));
+  font-size: calc(0.88rem * var(--ui));
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.totalSectionText + .grandTotalTable {
+  margin-top: calc(0.65rem * var(--ui));
 }
 
 .grandTotalTable {
@@ -214,6 +265,11 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+}
+
+.grandTotalAmount {
+  font-size: calc(1.08rem * var(--ui));
+  font-weight: 700;
 }
 
 .totalRow {

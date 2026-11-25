@@ -106,6 +106,7 @@ def apply_breach_penalty(finding: dict, issue_key: str) -> dict:
         return finding
     finding = {**finding}
     finding["description"] = f"{finding['description']} {link.scenario}"
+    finding["penalty_code"] = link.penalty_code
     finding["max_penalty"] = entry.max_penalty
     finding["legal_article"] = entry.legal_article
     finding["color"] = penalty_color(entry.max_penalty)

@@ -6,6 +6,7 @@ import {
   resolveRiskColor,
   severityLabel,
   sortFindings,
+  totalPenaltyColor,
   type RiskColor,
 } from "@/lib/findingRisk";
 import {
@@ -175,38 +176,97 @@ function fmtTotal(n: number): string {
   return n > 0 ? formatRubMax(n) : "—";
 }
 
+function vulnerabilityCountPhrase(n: number): string {
+  const nAbs = Math.abs(n);
+  const mod10 = nAbs % 10;
+  const mod100 = nAbs % 100;
+  let word = "уязвимостей";
+  if (mod10 === 1 && mod100 !== 11) {
+    word = "уязвимость";
+  } else if (
+    mod10 >= 2 &&
+    mod10 <= 4 &&
+    (mod100 < 12 || mod100 > 14)
+  ) {
+    word = "уязвимости";
+  }
+  return `На данный момент мы нашли ${n} ${word} на вашем сайте, в случае взлома и утечки данных вам грозит штраф`;
+}
+
+function TotalsColumns({ ip, legal }: { ip: number; legal: number }) {
+  return (
+    <table className={styles.grandTotalTable}>
+      <thead>
+        <tr>
+          <th scope="col">ИП</th>
+          <th scope="col">Юрлицо</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td className={styles.grandTotalAmount}>{fmtTotal(ip)}</td>
+          <td className={styles.grandTotalAmount}>{fmtTotal(legal)}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 function GrandTotalBlock({
   compliance,
   breach,
+  breachCount,
 }: {
   compliance: ReturnType<typeof complianceSanctionTotals>;
   breach: ReturnType<typeof breachSanctionTotals>;
+  breachCount: number;
 }) {
+  const complianceEmpty = compliance.ip === 0 && compliance.legal === 0;
+  const complianceColor = totalPenaltyColor(
+    Math.max(compliance.ip, compliance.legal),
+  );
+  const breachColor =
+    breachCount === 0 && breach.ip === 0 && breach.legal === 0
+      ? "green"
+      : totalPenaltyColor(Math.max(breach.ip, breach.legal));
+
   return (
-    <div className={styles.grandTotal}>
-      <p className={styles.grandTotalTitle}>Итого</p>
-      <table className={styles.grandTotalTable}>
-        <thead>
-          <tr>
-            <th scope="col" />
-            <th scope="col">ИП</th>
-            <th scope="col">Юрлицо</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">Обнаружено</th>
-            <td>{fmtTotal(compliance.ip)}</td>
-            <td>{fmtTotal(compliance.legal)}</td>
-          </tr>
-          <tr>
-            <th scope="row">При взломе</th>
-            <td>{fmtTotal(breach.ip)}</td>
-            <td>{fmtTotal(breach.legal)}</td>
-          </tr>
-        </tbody>
-      </table>
+  <div className={styles.grandTotal}>
+    <p className={styles.grandTotalTitle}>Итого</p>
+    <div
+      className={`${styles.totalSection} ${styles[`totalSection_${complianceColor}`]}`}
+    >
+      {complianceEmpty ? (
+        <p className={styles.totalSectionText}>
+          На данный момент на сайте не выявлено нарушений в ходе проверки по
+          статьям 152 и 168.
+        </p>
+      ) : (
+        <>
+          <p className={styles.totalSectionLead}>
+            Зафиксированные нарушения — ориентир штрафов сейчас
+          </p>
+          <TotalsColumns ip={compliance.ip} legal={compliance.legal} />
+        </>
+      )}
     </div>
+    <div
+      className={`${styles.totalSection} ${styles[`totalSection_${breachColor}`]}`}
+    >
+      {breachCount === 0 ? (
+        <p className={styles.totalSectionText}>
+          Технических уязвимостей со штрафным риском не найдено.
+        </p>
+      ) : (
+        <>
+          <p className={styles.totalSectionText}>
+            {vulnerabilityCountPhrase(breachCount)}
+          </p>
+          <TotalsColumns ip={breach.ip} legal={breach.legal} />
+        </>
+      )}
+    </div>
+  </div>
   );
 }
 
@@ -648,6 +708,7 @@ export function ScanResults({
               <GrandTotalBlock
                 compliance={complianceSanctions}
                 breach={breachSanctions}
+                breachCount={breachFindings.length}
               />
             </div>
 
