@@ -124,6 +124,7 @@
 - [x] **168-ФЗ + SEO**: `fz168_checker.py`, `seo_checker.py`, блок UI «SEO и разметка».
 - [x] **SEO лендинга**: metadata/OG/JSON-LD, `app/robots.ts`, `app/sitemap.ts`, `docs/seo-setup.md`, `NEXT_PUBLIC_SITE_URL`.
 - [x] Скачивание отчётов HTML: кнопки на `/check/{id}`, API `paid-report/download` (short/extended), печать в PDF в браузере.
+- [x] Зависания: лимит `asyncio.wait_for` на скан, stale → failed, `POST /restart`, UI доп. таймер + автоперезапуск.
 - [ ] **Оплата и PDF-сервер** (фаза B): ЮKassa, гейт перед скачиванием (см. `docs/report-policy.md`).
 - [x] robots.txt + sitemap.xml в поиске политики.
 - [x] Привязка штрафов из справочника.

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
+from datetime import datetime
 
 from email.message import EmailMessage
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -21,6 +23,12 @@ from app.services.outreach_message import (
 from app.reports.compose import compose_extended_report, compose_short_report
 from app.reports.html_render import render_paid_report_html
 from app.services.scan_runner import run_compliance_scan
+from app.services.scan_stale import (
+    mark_scan_failed,
+    reconcile_stale_scan,
+    restart_scan,
+    scan_task_timeout_sec,
+)
 from app.services.smtp_send import (
     SmtpDeliveryError,
     SmtpNotConfiguredError,
@@ -58,6 +66,8 @@ class ScanResponse(BaseModel):
     target_url: str
     status: str
     context: ScanContext | None = None
+    created_at: datetime | None = None
+    stale: bool = False
 
 
 class SendPreviewEmailRequest(BaseModel):
@@ -133,10 +143,32 @@ async def _run_scan_task(scan_id: int) -> None:
         scan = await session.get(Scan, scan_id)
         if scan is None:
             return
+        timeout = scan_task_timeout_sec()
         try:
-            await run_compliance_scan(session, scan)
+            await asyncio.wait_for(
+                run_compliance_scan(session, scan),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            await session.refresh(scan)
+            if scan.status not in (
+                ScanStatus.COMPLETED.value,
+                ScanStatus.FAILED.value,
+            ):
+                await mark_scan_failed(
+                    session,
+                    scan,
+                    reason="Проверка прервана по лимиту времени на сервере.",
+                )
         except Exception:
             await session.rollback()
+            scan = await session.get(Scan, scan_id)
+            if scan is not None and scan.status == ScanStatus.RUNNING.value:
+                await mark_scan_failed(
+                    session,
+                    scan,
+                    reason="Внутренняя ошибка при проверке.",
+                )
 
 
 @router.post("", response_model=ScanResponse)
@@ -168,11 +200,21 @@ def _scan_response(scan: Scan) -> ScanResponse:
             ctx = ScanContext(**raw)
         except (json.JSONDecodeError, TypeError, ValueError):
             ctx = None
+    stale = False
+    if scan.context_json:
+        try:
+            raw_ctx = json.loads(scan.context_json)
+            stale = bool(raw_ctx.get("scan_failed_reason"))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            stale = False
+
     return ScanResponse(
         id=scan.id,
         target_url=scan.target_url,
         status=scan.status,
         context=ctx,
+        created_at=scan.created_at,
+        stale=stale,
     )
 
 
@@ -181,6 +223,30 @@ async def get_scan(scan_id: int, session: AsyncSession = Depends(get_db)) -> Sca
     scan = await session.get(Scan, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail="Скан не найден")
+    await reconcile_stale_scan(session, scan)
+    await session.refresh(scan)
+    return _scan_response(scan)
+
+
+@router.post("/{scan_id}/restart", response_model=ScanResponse)
+async def restart_stale_scan(
+    scan_id: int,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db),
+) -> ScanResponse:
+    scan = await session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Скан не найден")
+    if scan.status == ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Проверка уже завершена — перезапуск не нужен.",
+        )
+    try:
+        scan = await restart_scan(session, scan)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    background_tasks.add_task(_run_scan_task, scan.id)
     return _scan_response(scan)
 
 

@@ -1,17 +1,39 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app.api.scans import router as scans_router
 from app.config import get_settings
 from app.db.session import async_session_factory
+from app.models.entities import Scan, ScanStatus
+from app.services.scan_stale import reconcile_stale_scan
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(Scan).where(
+                Scan.status.in_(
+                    [ScanStatus.PENDING.value, ScanStatus.RUNNING.value]
+                )
+            )
+        )
+        for scan in result.scalars():
+            await reconcile_stale_scan(session, scan)
+            await session.refresh(scan)
+    yield
+
 
 app = FastAPI(
     title="Site Audit API",
     description="API сервиса технического и комплаенс-аудита сайтов.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

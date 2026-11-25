@@ -37,6 +37,7 @@ type Scan = {
   target_url: string;
   status: string;
   context?: ScanContext | null;
+  stale?: boolean;
 };
 
 type Finding = {
@@ -77,6 +78,11 @@ const ESTIMATE_MIN_MS = 7 * 60 * 1000;
 const ESTIMATE_MAX_MS = 10 * 60 * 1000;
 const TICK_MS = 100;
 const COUNTDOWN_ZERO_MS = 45;
+/** Доп. ожидание, если основной таймер истёк, а API ещё running. */
+const EXTEND_WAIT_MS = 5 * 60 * 1000;
+const MAX_AUTO_RESTARTS = 2;
+const POLL_MS = 3000;
+const POLL_MS_EXTEND = 2000;
 
 function initialEstimateMs(scanId: number): number {
   const spread = ESTIMATE_MAX_MS - ESTIMATE_MIN_MS;
@@ -526,6 +532,11 @@ export function ScanResults({
   const [reportDownload, setReportDownload] = useState<
     "idle" | "short" | "extended"
   >("idle");
+  const [extendedWait, setExtendedWait] = useState(false);
+  const [extraMs, setExtraMs] = useState(EXTEND_WAIT_MS);
+  const [restartCount, setRestartCount] = useState(0);
+  const [pollToken, setPollToken] = useState(0);
+  const [restarting, setRestarting] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
   const [accelerating, setAccelerating] = useState(false);
   const [countdownSettled, setCountdownSettled] = useState(false);
@@ -556,19 +567,46 @@ export function ScanResults({
         return;
       }
       if (data.status === "failed") return;
-      setTimeout(poll, 3000);
+      const delay = extendedWait ? POLL_MS_EXTEND : POLL_MS;
+      setTimeout(poll, delay);
     }
 
     poll();
     return () => {
       active = false;
     };
-  }, [scanId]);
+  }, [scanId, pollToken, extendedWait]);
 
   useEffect(() => {
     setAccelerating(false);
     setCountdownSettled(false);
+    setExtendedWait(false);
+    setExtraMs(EXTEND_WAIT_MS);
+    setRestartCount(0);
+    setRestarting(false);
   }, [scanId]);
+
+  async function restartScanOnServer() {
+    if (restarting) return;
+    setRestarting(true);
+    try {
+      const res = await fetch(`/api/scans/${scanId}/restart`, {
+        method: "POST",
+      });
+      if (!res.ok) return;
+      const data: Scan = await res.json();
+      setScan(data);
+      setFindings([]);
+      setExtendedWait(false);
+      setExtraMs(EXTEND_WAIT_MS);
+      setCountdownSettled(false);
+      setAccelerating(false);
+      setRestartCount((c) => c + 1);
+      setPollToken((t) => t + 1);
+    } finally {
+      setRestarting(false);
+    }
+  }
 
   const scanInFlight =
     !scan || scan.status === "pending" || scan.status === "running";
@@ -576,7 +614,7 @@ export function ScanResults({
     scan?.status === "completed" || scan?.status === "failed";
 
   const countdownActive =
-    !countdownSettled && (scanInFlight || accelerating);
+    !countdownSettled && !extendedWait && (scanInFlight || accelerating);
 
   const { remainingMs, finishing, zero } = useScanCountdown(
     scanId,
@@ -602,8 +640,49 @@ export function ScanResults({
     }
   }, [zero, accelerating]);
 
-  const busy = countdownActive;
+  useEffect(() => {
+    if (scan?.status === "failed" && !countdownSettled) {
+      setCountdownSettled(true);
+      setExtendedWait(false);
+    }
+  }, [scan?.status, countdownSettled]);
+
+  useEffect(() => {
+    if (zero && scanInFlight && !scanTerminal) {
+      setExtendedWait(true);
+      setExtraMs(EXTEND_WAIT_MS);
+    }
+  }, [zero, scanInFlight, scanTerminal]);
+
+  useEffect(() => {
+    if (!extendedWait || scanTerminal) return;
+    const id = window.setInterval(() => {
+      setExtraMs((m) => Math.max(0, m - TICK_MS));
+    }, TICK_MS);
+    return () => window.clearInterval(id);
+  }, [extendedWait, scanTerminal]);
+
+  useEffect(() => {
+    if (
+      !extendedWait ||
+      extraMs > 0 ||
+      scanTerminal ||
+      restartCount >= MAX_AUTO_RESTARTS ||
+      restarting
+    ) {
+      return;
+    }
+    void restartScanOnServer();
+  }, [
+    extendedWait,
+    extraMs,
+    scanTerminal,
+    restartCount,
+    restarting,
+  ]);
+
   const revealOutcome = scanTerminal && countdownSettled;
+  const loaderVisible = !revealOutcome;
 
   const { complianceFindings, seoFindings, breachFindings, accessFindings } =
     useMemo(() => {
@@ -729,24 +808,50 @@ export function ScanResults({
             ? (STATUS_TEXT[scan.status] ?? scan.status)
             : "Загрузка…"}
       </p>
-      {busy ? (
+      {loaderVisible ? (
         <>
-          <div className={styles.countdownBlock} aria-live="polite">
+          <div
+            className={
+              extendedWait
+                ? `${styles.countdownBlock} ${styles.countdownBlockExtend}`
+                : styles.countdownBlock
+            }
+            aria-live="polite"
+          >
             <p className={styles.countdownLabel}>
-              {accelerating
-                ? "Ускоряем отсчёт — отчёт уже готов"
-                : finishing
-                  ? "Проверка может занять до 10 минут — ждём сервер…"
-                  : "Ориентир по времени (до 10 минут)"}
+              {extendedWait
+                ? "Нам требуется немного больше времени — сервер ещё обрабатывает сайт"
+                : accelerating
+                  ? "Ускоряем отсчёт — отчёт уже готов"
+                  : finishing
+                    ? "Проверка может занять до 10 минут — ждём сервер…"
+                    : "Ориентир по времени (до 10 минут)"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>
-                {formatCountdownTenths(remainingMs)}
+                {formatCountdownTenths(
+                  extendedWait ? extraMs : remainingMs,
+                )}
               </span>
               <span className={styles.countdownUnit}>
-                {remainingMs >= 60_000 ? " мин" : " сек"}
+                {(extendedWait ? extraMs : remainingMs) >= 60_000
+                  ? " мин"
+                  : " сек"}
               </span>
             </p>
+            {extendedWait && restartCount >= MAX_AUTO_RESTARTS ? (
+              <p className={styles.countdownHint}>
+                Если отчёт не появился —{" "}
+                <button
+                  type="button"
+                  className={styles.inlineRestartBtn}
+                  disabled={restarting}
+                  onClick={() => void restartScanOnServer()}
+                >
+                  {restarting ? "Перезапуск…" : "перезапустить проверку"}
+                </button>
+              </p>
+            ) : null}
           </div>
           <ol className={styles.steps}>
             {STEPS.map((label, index) => (
@@ -766,6 +871,23 @@ export function ScanResults({
             <div className={styles.loaderBar} />
           </div>
         </>
+      ) : null}
+      {revealOutcome && scan?.status === "failed" ? (
+        <div className={styles.failedBanner} role="alert">
+          <p className={styles.failedTitle}>Не удалось завершить проверку</p>
+          <p className={styles.itemMeta}>
+            Сервер не успел обработать сайт или задача была прервана. Попробуйте
+            ещё раз — тяжёлые сайты могут занимать больше 10 минут.
+          </p>
+          <button
+            type="button"
+            className={styles.failedRestartBtn}
+            disabled={restarting}
+            onClick={() => void restartScanOnServer()}
+          >
+            {restarting ? "Запускаем…" : "Повторить проверку"}
+          </button>
+        </div>
       ) : null}
       {revealOutcome && accessFindings.length > 0 ? (
         <div className={styles.accessBanner} role="status">

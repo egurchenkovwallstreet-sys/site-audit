@@ -211,6 +211,77 @@
   color: color-mix(in srgb, var(--ok) 72%, var(--text-secondary));
 }
 
+.countdownBlockExtend {
+  border-color: color-mix(in srgb, var(--warn) 48%, var(--border));
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+  box-shadow:
+    0 0 calc(24px * var(--ui))
+      color-mix(in srgb, var(--warn) 18%, transparent),
+    inset 0 0 calc(20px * var(--ui))
+      color-mix(in srgb, var(--warn) 6%, transparent);
+}
+
+.countdownBlockExtend .countdownUnit {
+  color: color-mix(in srgb, var(--warn) 75%, var(--text-secondary));
+}
+
+.countdownHint {
+  margin: calc(0.65rem * var(--ui)) 0 0;
+  font-size: calc(0.82rem * var(--ui));
+  color: var(--text-secondary);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.inlineRestartBtn {
+  border: none;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inlineRestartBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.failedBanner {
+  margin-bottom: calc(1.25rem * var(--ui));
+  padding: calc(1rem * var(--ui)) calc(1.15rem * var(--ui));
+  border-radius: calc(12px * var(--ui));
+  border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--border));
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+}
+
+.failedTitle {
+  margin: 0 0 calc(0.35rem * var(--ui));
+  font-weight: 600;
+  font-size: calc(1rem * var(--ui));
+}
+
+.failedRestartBtn {
+  margin-top: calc(0.75rem * var(--ui));
+  min-height: calc(42px * var(--ui));
+  padding: 0 calc(1.1rem * var(--ui));
+  border-radius: calc(10px * var(--ui));
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: calc(0.88rem * var(--ui));
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.failedRestartBtn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .loader {
   width: 100%;
   height: calc(4px * var(--ui));
