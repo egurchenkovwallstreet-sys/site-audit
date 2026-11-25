@@ -204,17 +204,14 @@ function pluralRu(
 }
 
 function violationCountPhrase(total: number, critical: number): string {
-  if (critical > 0) {
-    const word = pluralRu(
-      critical,
-      "критическое нарушение",
-      "критических нарушения",
-      "критических нарушений",
-    );
-    return `На вашем сайте выявлено ${critical} ${word}, которые влекут к штрафам на сумму:`;
-  }
   const word = pluralRu(total, "нарушение", "нарушения", "нарушений");
-  return `На вашем сайте выявлено ${total} ${word}, которые влекут к штрафам на сумму:`;
+  const critLabel = pluralRu(
+    critical,
+    "критическое",
+    "критические",
+    "критических",
+  );
+  return `На данный момент всего выявлено ${total} ${word} на вашем сайте, из них ${critical} ${critLabel}, которые влекут к штрафам на сумму:`;
 }
 
 function vulnerabilityCountPhrase(total: number, critical: number): string {
