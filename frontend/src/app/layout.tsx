@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: "Проверка сайта",
     title: "Проверка сайта на 152-ФЗ и технические риски",
     description:
-      "Автоматический аудит: compliance, SEO, безопасность. Без регистрации.",
+      "Автоматический аудит: 152-ФЗ, SEO, безопасность. Без регистрации.",
   },
   twitter: {
     card: "summary_large_image",
@@ -40,6 +40,7 @@ export const metadata: Metadata = {
       "Онлайн-скан сайта на риски штрафов и технические уязвимости.",
   },
   robots: { index: true, follow: true },
+  other: { google: "notranslate" },
 };
 
 const jsonLd = {
@@ -57,11 +58,11 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" data-theme="dark" suppressHydrationWarning>
+    <html lang="ru" translate="no" data-theme="dark" suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
-      <body>
+      <body className="notranslate">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
