@@ -203,15 +203,15 @@ function pluralRu(
   return many;
 }
 
-function violationCountPhrase(total: number, critical: number): string {
-  const word = pluralRu(total, "нарушение", "нарушения", "нарушений");
-  const critLabel = pluralRu(
-    critical,
-    "критическое",
-    "критические",
-    "критических",
+/** В блоке штрафов каждое compliance-нарушение считаем критическим (уже ведёт к штрафу). */
+function violationCountPhrase(count: number): string {
+  const word = pluralRu(
+    count,
+    "критическое нарушение",
+    "критических нарушения",
+    "критических нарушений",
   );
-  return `На данный момент всего выявлено ${total} ${word} на вашем сайте, из них ${critical} ${critLabel}, которые влекут к штрафам на сумму:`;
+  return `На вашем сайте найдено ${count} ${word}, которые уже сейчас ведут к штрафам на сумму:`;
 }
 
 function vulnerabilityCountPhrase(total: number, critical: number): string {
@@ -254,8 +254,6 @@ function GrandTotalBlock({
 }) {
   const complianceCount = complianceFindings.length;
   const breachCount = breachFindings.length;
-  const complianceCritical = complianceFindings.filter(isCriticalSummaryFinding)
-    .length;
   const breachCritical = breachFindings.filter(isCriticalSummaryFinding).length;
   const complianceEmpty = complianceCount === 0;
   const complianceColor = totalPenaltyColor(
@@ -280,7 +278,7 @@ function GrandTotalBlock({
       ) : (
         <>
           <p className={styles.totalSectionLeadUrgent}>
-            {violationCountPhrase(complianceCount, complianceCritical)}
+            {violationCountPhrase(complianceCount)}
           </p>
           <TotalsColumns ip={compliance.ip} legal={compliance.legal} />
         </>
