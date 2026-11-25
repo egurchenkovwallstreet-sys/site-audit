@@ -283,71 +283,6 @@ function FindingItems({ items }: { items: Finding[] }) {
   );
 }
 
-function CheckContextPanel({ context }: { context: ScanContext }) {
-  const complianceRan = (context.pages_checked ?? 0) > 0;
-  return (
-    <div className={styles.contextBlock}>
-      <p className={styles.contextTitle}>Что проверили</p>
-      {context.pages_checked != null && context.pages_checked > 0 ? (
-        <p className={styles.contextMeta}>
-          Проверено страниц: {context.pages_checked}
-          {context.used_fallback && context.scanned_url
-            ? ` (вход: ${context.scanned_url}, главная под антиботом)`
-            : ""}
-          .
-        </p>
-      ) : null}
-      {context.scanned_urls && context.scanned_urls.length > 0 ? (
-        <details className={styles.contextDetails}>
-          <summary className={styles.contextMeta}>Список страниц</summary>
-          <ul className={styles.contextList}>
-            {context.scanned_urls.map((u) => (
-              <li key={u}>
-                <span className={styles.contextMeta}>{u}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-      {context.scope ? (
-        <p className={styles.contextMeta}>{context.scope}</p>
-      ) : null}
-      <ul className={styles.contextList}>
-        <li>
-          Политика ПДн:{" "}
-          {!complianceRan ? (
-            <span className={styles.contextWarn}>
-              не проверяли (HTML сайта не прочитан)
-            </span>
-          ) : context.privacy_found ? (
-            <span className={styles.contextOk}>найдена</span>
-          ) : (
-            <span className={styles.contextWarn}>не обнаружена</span>
-          )}
-          {context.privacy_source ? (
-            <span className={styles.contextMeta}> — {context.privacy_source}</span>
-          ) : null}
-        </li>
-        <li>
-          Согласие / cookie:{" "}
-          {!complianceRan ? (
-            <span className={styles.contextWarn}>
-              не проверяли (HTML сайта не прочитан)
-            </span>
-          ) : context.consent_found ? (
-            <span className={styles.contextOk}>признаки есть</span>
-          ) : (
-            <span className={styles.contextWarn}>признаков нет</span>
-          )}
-          {context.consent_source ? (
-            <span className={styles.contextMeta}> — {context.consent_source}</span>
-          ) : null}
-        </li>
-      </ul>
-    </div>
-  );
-}
-
 function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -672,7 +607,7 @@ export function ScanResults({
             {linkCopied ? "Ссылка скопирована" : "Скопировать ссылку"}
           </button>
           <button type="button" className={styles.reset} onClick={onReset}>
-            Новая проверка
+            Главная
           </button>
         </div>
       </div>
@@ -727,9 +662,6 @@ export function ScanResults({
           <p className={styles.accessTitle}>{accessFindings[0].title}</p>
           <p className={styles.itemMeta}>{accessFindings[0].description}</p>
         </div>
-      ) : null}
-      {revealOutcome && scan?.status === "completed" && scan.context ? (
-        <CheckContextPanel context={scan.context} />
       ) : null}
       {complianceClean && revealOutcome ? (
         <div className={styles.successBanner}>
