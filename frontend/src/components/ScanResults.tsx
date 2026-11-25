@@ -251,8 +251,7 @@ function GrandTotalBlock({
           <p className={styles.totalSectionLeadUrgent}>
             На вашем сайте выявлены нарушения, которые влекут к штрафам на
             сумму{" "}
-            <span className={styles.totalSectionLeadEm}>до</span> — ориентир
-            уже сейчас:
+            <span className={styles.totalSectionLeadEm}>до</span>:
           </p>
           <TotalsColumns ip={compliance.ip} legal={compliance.legal} />
         </>
