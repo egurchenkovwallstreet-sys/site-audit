@@ -30,15 +30,15 @@ def _scan() -> Scan:
     )
 
 
-def test_short_report_contains_koap_and_rub():
+def test_short_report_is_findings_only():
     text = compose_short_report(_scan(), [_finding()])
-    assert "consultant.ru" in text
-    assert "13.11" in text
-    assert "₽" in text
-    assert "до 20 000" in text or "до 60 000" in text
+    assert "Список выявленного" in text
+    assert "Что сделать" not in text
+    assert "consultant.ru" not in text
+    assert "Исправьте документ." not in text
 
 
-def test_extended_report_has_executor_section():
+def test_extended_report_includes_short_plus_recommendations():
     text = compose_extended_report(
         _scan(),
         [
@@ -61,10 +61,11 @@ def test_extended_report_has_executor_section():
             ),
         ],
     )
-    assert "разработчика" in text.lower()
-    assert "Код в системе" in text
+    assert "Резюме" in text
+    assert "consultant.ru" in text
+    assert "Список выявленного" in text
     assert "Подробные рекомендации" in text
     assert "Как убрать риск штрафов" in text
-    assert "Как исправить уязвимости" in text
-    assert "Рекомендации по SEO" in text
     assert "Закройте доступ" in text
+    assert "Что сделать" not in text
+    assert "разработчика" not in text.lower()

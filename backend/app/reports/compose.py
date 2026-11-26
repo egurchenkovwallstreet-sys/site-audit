@@ -235,113 +235,83 @@ def _detailed_recommendations(findings: list[Finding]) -> str:
     return "\n".join(parts)
 
 
-def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
-    """Отчёт 990 ₽ — список проблем человеческим языком + КоАП и суммы."""
-    ctx = _scan_context_dict(scan)
+def _report_header(scan: Scan, title: str) -> list[str]:
     completed = scan.completed_at or datetime.now()
-    parts = [
-        f"# Краткий отчёт по сайту",
+    return [
+        f"# {title}",
         "",
         f"**Сайт:** {scan.target_url}",
         f"**Дата проверки:** {completed.strftime('%d.%m.%Y %H:%M UTC')}",
         f"**Номер скана:** {scan.id}",
         "",
-        _summary_money(findings),
-        _scope_section(ctx),
-        "## Список выявленного",
-        "",
     ]
+
+
+def _short_findings_section(findings: list[Finding]) -> str:
+    """Краткий отчёт: только факты и пояснения, без штрафов и инструкций."""
+    parts = ["## Список выявленного", ""]
+    if not findings:
+        parts.extend(["Замечаний не выявлено.", ""])
+        return "\n".join(parts)
+
     n = 0
     for f in _sorted_findings(findings):
         n += 1
         parts.append(f"### {n}. {f.title}")
         parts.append("")
-        parts.append(f"**Суть:** {f.description.split(chr(10))[0][:500]}")
+        lead = f.description.split("\n")[0].strip()
+        parts.append(f"**Суть:** {lead[:500]}")
         if f.legal_article:
             parts.append(f"**Норма:** {f.legal_article}")
+        if len(f.description.strip()) > len(lead):
+            parts.append(f"**Пояснение:** {f.description.strip()}")
         parts.append(f"**Риск:** {_SEVERITY_RU.get(f.severity, f.severity)}.")
-        for line in _penalty_block(f):
-            parts.append(f"- {line}")
-        if f.remediation:
-            parts.append(f"**Что сделать:** {f.remediation}")
         parts.append("")
+    return "\n".join(parts)
+
+
+def _executive_summary(findings: list[Finding]) -> str:
+    """Резюме для расширенного отчёта: суммы КоАП и приоритеты."""
+    high = [f for f in findings if f.severity in ("high", "critical")]
+    parts = [
+        "## Резюме",
+        "",
+        f"**Всего пунктов:** {len(findings)}; **высокий приоритет:** {len(high)}.",
+        "",
+    ]
+    money = _summary_money(findings)
+    for line in money.split("\n"):
+        if line.startswith("## "):
+            continue
+        parts.append(line)
+    parts.append(
+        "Далее — список проблем (как в кратком отчёте) и **рекомендации по устранению**.",
+    )
+    parts.append("")
+    return "\n".join(parts)
+
+
+def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
+    """Краткий отчёт (490 ₽): список проблем и пояснения без штрафов и «что сделать»."""
+    ctx = _scan_context_dict(scan)
+    parts = _report_header(scan, "Краткий отчёт по сайту")
+    parts.append(_scope_section(ctx))
+    parts.append(_short_findings_section(findings))
     parts.append("---")
     parts.append(_disclaimer())
     return "\n".join(parts)
 
 
-def _executor_block(f: Finding) -> list[str]:
-    lines = ["**Куда править / задача для разработчика:**", ""]
-    if f.remediation:
-        lines.append(f"- Действие: {f.remediation}")
-    if f.penalty_code:
-        lines.append(f"- Код в системе: `{f.penalty_code}`")
-    desc = f.description
-    if "https://" in desc:
-        for chunk in desc.split():
-            if chunk.startswith("http"):
-                url = chunk.rstrip(").,;")
-                lines.append(f"- Затронутый URL или источник: {url}")
-                break
-    lines.append(f"- Полное описание факта: {desc}")
-    lines.append("")
-    return lines
-
-
 def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
-    """Отчёт 1990 ₽ — расширенный: направления исправления, КоАП, суммы, ТЗ."""
+    """Расширенный (990 ₽): резюме + краткий список + рекомендации по устранению."""
     ctx = _scan_context_dict(scan)
-    completed = scan.completed_at or datetime.now()
-    parts = [
-        f"# Расширенный отчёт по сайту",
-        "",
-        f"**Сайт:** {scan.target_url}",
-        f"**Дата проверки:** {completed.strftime('%d.%m.%Y %H:%M UTC')}",
-        f"**Номер скана:** {scan.id}",
-        "",
-        _disclaimer(),
-        "",
-        _summary_money(findings),
-        _scope_section(ctx),
-        _detailed_recommendations(findings),
-        "## Детализация по пунктам",
-        "",
-    ]
-    by_type: dict[str, list[Finding]] = {}
-    for f in findings:
-        by_type.setdefault(f.type, []).append(f)
-
-    for t in _TYPE_ORDER:
-        items = by_type.get(t)
-        if not items:
-            continue
-        parts.append(f"## {_TYPE_TITLE.get(t, t)}")
-        parts.append("")
-        for i, f in enumerate(_sorted_findings(items), start=1):
-            parts.append(f"### {i}. {f.title}")
-            parts.append("")
-            parts.append(f"**Для владельца сайта:** {_SEVERITY_RU.get(f.severity, f.severity)} приоритет. "
-                           f"{f.description}")
-            parts.append("")
-            if f.legal_article:
-                parts.append(f"**Правовая основа (152-ФЗ / иное):** {f.legal_article}")
-                parts.append("")
-            parts.append("**Штрафы и статьи КоАП:**")
-            for line in _penalty_block(f):
-                parts.append(f"- {line}")
-            parts.append("")
-            parts.extend(_executor_block(f))
-        parts.append("")
-
-    parts.append("## Порядок внедрения")
+    parts = _report_header(scan, "Расширенный отчёт по сайту")
+    parts.append(_disclaimer())
     parts.append("")
-    parts.append(
-        "1. Блок **«Как убрать риск штрафов»** — сначала пункты с высоким приоритетом."
-    )
-    parts.append("2. Блок **«Как исправить уязвимости»** — открытые утечки и критичные сигналы.")
-    parts.append("3. Блок **«Рекомендации по SEO»** — после стабилизации комплаенса и безопасности.")
-    parts.append("4. Повторная проверка через 2–4 недели после правок.")
-    parts.append("")
+    parts.append(_executive_summary(findings))
+    parts.append(_scope_section(ctx))
+    parts.append(_short_findings_section(findings))
+    parts.append(_detailed_recommendations(findings))
     parts.append("---")
     parts.append(_disclaimer())
     return "\n".join(parts)
