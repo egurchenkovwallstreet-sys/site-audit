@@ -64,3 +64,22 @@
   margin-top: 0.35rem;
   opacity: 0.9;
 }
+
+@media (max-width: 639px) {
+  .wrap,
+  .wrapCompact {
+    padding: 0.65rem 0.55rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    font-size: 0.78rem;
+    min-width: 16rem;
+  }
+
+  .table tbody th[scope="row"] {
+    white-space: normal;
+    max-width: 6.5rem;
+  }
+}

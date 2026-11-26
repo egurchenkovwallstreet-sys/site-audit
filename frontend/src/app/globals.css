@@ -67,3 +67,26 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+img,
+video,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    overflow-x: clip;
+  }
+}
+
+@media (max-width: 380px) {
+  html {
+    font-size: 14px;
+  }
+}

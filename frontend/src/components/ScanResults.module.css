@@ -1,10 +1,13 @@
-/* Масштаб UI отчёта +20% */
+/* Масштаб UI отчёта +20% (на узких экранах ниже) */
 .wrap {
   --ui: 1.2;
   margin-top: calc(2rem * var(--ui));
   padding-top: calc(2rem * var(--ui));
   border-top: 1px solid var(--border);
   font-size: calc(1rem * var(--ui));
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .head {
@@ -135,18 +138,99 @@
   background: var(--accent-hover);
 }
 
-@media (max-width: 420px) {
+@media (max-width: 639px) {
+  .wrap {
+    --ui: 1.03;
+    margin-top: 1.35rem;
+    padding-top: 1.35rem;
+  }
+
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .headActions {
+    justify-content: center;
+    width: 100%;
+  }
+
   .headBtnShare,
   .headBtnHome {
+    flex: 1 1 calc(50% - 0.35rem);
+    min-width: 0;
     white-space: normal;
     text-align: center;
     max-width: 100%;
   }
 
+  .reportDownloadRow {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
   .reportBtnShort,
   .reportBtnExt {
     flex: 1 1 100%;
+    max-width: 100%;
     white-space: normal;
+    font-size: calc(0.86rem * var(--ui));
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .countdownBlock {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .countdownNumber {
+    font-size: clamp(1.85rem, 11vw, 2.35rem);
+  }
+
+  .countdownLabel {
+    font-size: calc(0.78rem * var(--ui));
+    padding: 0 0.15rem;
+  }
+
+  .totalsBlock {
+    padding: calc(0.85rem * var(--ui));
+    width: 100%;
+    min-width: 0;
+  }
+
+  .totalSection {
+    padding: calc(0.85rem * var(--ui)) calc(0.75rem * var(--ui));
+  }
+
+  .totalFigures {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .totalFigureValue {
+    font-size: clamp(0.95rem, 4.2vw, 1.3rem);
+    word-break: break-word;
+  }
+
+  .item {
+    padding: calc(0.95rem * var(--ui));
+  }
+
+  .itemHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .itemTitle,
+  .itemMeta {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }
 
