@@ -51,9 +51,8 @@ def _check_scope_note() -> str:
     from app.config import get_settings
 
     n = get_settings().scan_max_pages
-    budget = get_settings().scan_time_budget_sec // 60
     return (
-        f"До {n} страниц того же сайта (бюджет ~{budget} мин): вход, ссылки, sitemap, "
+        f"До {n} страниц того же сайта: вход, ссылки, sitemap, "
         "типовые legal-URL; при включённом Nuclei — активные шаблоны exposure/misconfig/CVE."
     )
 
