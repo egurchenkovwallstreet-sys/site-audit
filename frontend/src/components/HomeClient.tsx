@@ -21,7 +21,7 @@ export function HomeClient() {
               Проверка сайта по 152‑ФЗ, 168‑ФЗ, SEO и техаудит на риски взлома
               и утечки данных
             </span>
-            <span className={styles.titleLineAccent}>онлайн · таймер 7:59</span>
+            <span className={styles.titleLineAccent}>онлайн · до 10 минут</span>
           </h1>
         </header>
         <div className={styles.panel}>

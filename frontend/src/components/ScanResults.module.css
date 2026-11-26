@@ -211,6 +211,22 @@
   color: color-mix(in srgb, var(--ok) 72%, var(--text-secondary));
 }
 
+@keyframes countdownAccelBlink {
+  0%,
+  100% {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--ok) 42%, var(--border));
+  }
+  50% {
+    opacity: 0.72;
+    border-color: color-mix(in srgb, var(--ok) 78%, var(--border));
+  }
+}
+
+.countdownBlockAccel {
+  animation: countdownAccelBlink 1.1s ease-in-out infinite;
+}
+
 .countdownBlockExtend {
   border-color: color-mix(in srgb, var(--warn) 48%, var(--border));
   background: color-mix(in srgb, var(--warn) 10%, var(--surface));

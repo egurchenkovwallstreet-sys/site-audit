@@ -11,7 +11,7 @@
 - [x] **Контейнеры:** `postgres:16-alpine`, backend (Playwright+Nuclei), `site-audit-frontend`, `mailpit:v1.21`.
 - [x] **Скан (факт в backend):** **30** стр., бюджет **600 с**, Playwright **14** URL, Nuclei **120 с**, passive probes **12** — в серверном `.env` этих ключей нет, действуют дефолты `config.py`.
 - [x] **`.env` на VPS:** URL/CORS/Mailpit/Postgres/SMTP→mailpit (тест); **GigaChat и ЮKassa не настроены**.
-- [x] **UX на проде:** таймер **7:59** + эксп. досчёт; stale/restart; все findings; HTML-отчёты без оплаты; **Итого** — compliance: «**N критических нарушений… уже сейчас**»; security: всего N / критических M.
+- [x] **UX на проде:** таймер **10:00**; при раннем `completed` — ускорение циферблата **+5%/с к скорости**, моргание блока; stale/restart; все findings; HTML-отчёты без оплаты; **Итого** — compliance: «**N критических…**»; security: всего N / критических M.
 - [x] **Cron (MSK):** вс **01:30** strict regression, **1-е 01:15** panel 50.
 - [ ] После каждого содержательного деплоя — сверить commit и при необходимости обновить дату в этом блоке и `docs/prod-snapshot.md`.
 
@@ -133,7 +133,7 @@
 - [x] `backend/app/compliance/checker.py` — политика, cookie, формы, иностранные SDK.
 - [x] **Глубина A1–A3** (`docs/scan-depth-roadmap.md`): политика ч.4, техзаголовки, трекеры; формы/реквизиты; обход контактов и legal-URL; при баннере — раскрытие cookie (`cookie_policy_*`).
 - [x] **B0 security**: пассивные пробы типовых утечек (`.git`, `.env`, …) и mixed content на HTTPS-страницах.
-- [x] **B1 / бюджет 10 мин**: Nuclei в скане, **30** приор. стр., Playwright 14, CORS/COOP/CORP, UI таймер **7:59** + экспон. досчёт при раннем `completed`.
+- [x] **B1 / бюджет 10 мин**: Nuclei в скане, **30** приор. стр., Playwright 14, CORS/COOP/CORP, UI таймер **10:00** + ускорение циферблата при раннем `completed`.
 - [x] **168-ФЗ + SEO**: `fz168_checker.py`, `seo_checker.py`, блок UI «SEO и разметка».
 - [x] **SEO лендинга**: metadata/OG/JSON-LD, `app/robots.ts`, `app/sitemap.ts`, `docs/seo-setup.md`, `NEXT_PUBLIC_SITE_URL`.
 - [x] Скачивание отчётов HTML: кнопки на `/check/{id}`, API `paid-report/download` (short/extended), печать в PDF в браузере.
@@ -144,7 +144,7 @@
 - [x] API: POST `/api/scans`, GET findings, контекст в GET scan.
 - [x] Darom (`https://darom-app.online/`) — без ложных политика/cookie (проверено на VPS).
 - [x] E-mail из Flutter-бандла (`main.dart.js`), в т.ч. Darom — `email_discover.py` + кэш SPA-скана.
-- [x] Таймер **7:59** на экране скана, обязательное экспон. ускорение до нуля при раннем `completed`.
+- [x] Таймер **10:00** на экране; при раннем `completed` — ускорение циферблата (+5%/с к скорости), моргание, затем результат.
 - [x] Кнопка «Отправить письмо» + API preview outreach (`docs/smtp-setup.md`).
 - [x] Базовый прогон `regression_scan.py` на VPS.
 

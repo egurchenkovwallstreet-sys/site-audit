@@ -74,10 +74,12 @@ const STEPS = [
   "SEO и технические риски",
 ] as const;
 
-/** Фиксированный таймер на экране: 7:59 (бюджет скана на сервере до 10 мин). */
-const SCAN_COUNTDOWN_MS = 7 * 60 * 1000 + 59 * 1000;
+/** Таймер на экране: 10:00 (бюджет скана на сервере — 600 с). */
+const SCAN_COUNTDOWN_MS = 10 * 60 * 1000;
 const TICK_MS = 100;
 const COUNTDOWN_ZERO_MS = 45;
+/** Каждую секунду в режиме ускорения циферблат на 5% быстрее предыдущей скорости. */
+const ACCEL_STEP = 1.05;
 /** Доп. ожидание, если основной таймер истёк, а API ещё running. */
 const EXTEND_WAIT_MS = 5 * 60 * 1000;
 const MAX_AUTO_RESTARTS = 2;
@@ -86,6 +88,11 @@ const POLL_MS_EXTEND = 2000;
 
 function scanCountdownMs(): number {
   return SCAN_COUNTDOWN_MS;
+}
+
+function accelDigitSpeed(accelStartedAt: number, now = Date.now()): number {
+  const elapsedSec = Math.floor((now - accelStartedAt) / 1000);
+  return Math.pow(ACCEL_STEP, elapsedSec + 1);
 }
 
 function formatCountdownTenths(remainingMs: number): string {
@@ -106,7 +113,7 @@ function useScanCountdown(
 ) {
   const deadlineRef = useRef<number | null>(null);
   const remainingRef = useRef(scanCountdownMs());
-  const accelLambdaRef = useRef<number | null>(null);
+  const accelStartedAtRef = useRef<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(scanCountdownMs);
   const [finishing, setFinishing] = useState(false);
   const [zero, setZero] = useState(false);
@@ -115,20 +122,19 @@ function useScanCountdown(
     const est = scanCountdownMs();
     deadlineRef.current = Date.now() + est;
     remainingRef.current = est;
-    accelLambdaRef.current = null;
+    accelStartedAtRef.current = null;
     setRemainingMs(est);
     setFinishing(false);
     setZero(false);
   }, [scanId]);
 
   useEffect(() => {
-    if (accelerating && accelLambdaRef.current === null) {
-      const r0 = Math.max(remainingRef.current, COUNTDOWN_ZERO_MS + 20);
-      const duration = Math.min(4_200, Math.max(1_400, r0 / 22));
-      accelLambdaRef.current = Math.log(r0 / COUNTDOWN_ZERO_MS) / duration;
-    }
-    if (!accelerating) {
-      accelLambdaRef.current = null;
+    if (accelerating) {
+      if (accelStartedAtRef.current === null) {
+        accelStartedAtRef.current = Date.now();
+      }
+    } else {
+      accelStartedAtRef.current = null;
     }
   }, [accelerating]);
 
@@ -139,10 +145,10 @@ function useScanCountdown(
 
     const tick = () => {
       let left: number;
-      if (accelerating && accelLambdaRef.current !== null) {
-        const lambda = accelLambdaRef.current;
-        left = remainingRef.current * Math.exp((-lambda * TICK_MS) / 1);
-        if (left < COUNTDOWN_ZERO_MS) {
+      if (accelerating && accelStartedAtRef.current !== null) {
+        const speed = accelDigitSpeed(accelStartedAtRef.current);
+        left = remainingRef.current - TICK_MS * speed;
+        if (left <= COUNTDOWN_ZERO_MS) {
           left = 0;
           setZero(true);
         }
@@ -636,7 +642,7 @@ export function ScanResults({
     accelerating,
   );
 
-  /** Ранняя готовность API — досчитываем таймер экспонентой до нуля, потом результат. */
+  /** Ранняя готовность API — ускоряем циферблат (+5%/с к скорости), потом результат. */
   useEffect(() => {
     if (scan?.status !== "completed" || countdownSettled || accelerating) {
       return;
@@ -829,7 +835,9 @@ export function ScanResults({
             className={
               extendedWait
                 ? `${styles.countdownBlock} ${styles.countdownBlockExtend}`
-                : styles.countdownBlock
+                : accelerating && scan?.status === "completed"
+                  ? `${styles.countdownBlock} ${styles.countdownBlockAccel}`
+                  : styles.countdownBlock
             }
             aria-live="polite"
           >
@@ -837,10 +845,10 @@ export function ScanResults({
               {extendedWait
                 ? "Нам требуется немного больше времени — сервер ещё обрабатывает сайт"
                 : accelerating
-                  ? "Ускоряем отсчёт — отчёт уже готов"
+                  ? "Ускоряем циферблат — отчёт уже готов"
                   : finishing
-                    ? "Проверка может занять дольше 7:59 — ждём сервер…"
-                    : "Ориентир по времени — 7:59"}
+                    ? "Проверка может занять до 10 минут — ждём сервер…"
+                    : "Ориентир по времени — 10 минут"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>
