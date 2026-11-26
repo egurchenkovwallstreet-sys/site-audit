@@ -1,5 +1,6 @@
 from app.models.entities import Finding, Scan, ScanStatus
 from app.reports.compose import compose_extended_report, compose_short_report
+from app.reports.html_render import render_paid_report_html
 
 
 def _finding(**kwargs) -> Finding:
@@ -76,3 +77,21 @@ def test_extended_report_includes_recommendations():
     assert "Подробные рекомендации" in text
     assert "Закройте доступ" in text
     assert text.index("Штрафы и нарушения") < text.index("Подробные рекомендации")
+
+
+def test_html_report_colored_sections():
+    findings = [
+        _finding(),
+        _finding(
+            id=2,
+            type="security",
+            severity="high",
+            title="Открытый .git",
+            penalty_code="security_git_exposed",
+        ),
+    ]
+    html_text, _ = render_paid_report_html(_scan(), findings, "short")
+    assert 'report-block--compliance' in html_text
+    assert 'report-block--security' in html_text
+    assert 'class="finding"' in html_text
+    assert "risk--" in html_text
