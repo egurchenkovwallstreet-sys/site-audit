@@ -11,7 +11,7 @@
 - [x] **Контейнеры:** `postgres:16-alpine`, backend (Playwright+Nuclei), `site-audit-frontend`, `mailpit:v1.21`.
 - [x] **Скан (факт в backend):** **30** стр., бюджет **600 с**, Playwright **14** URL, Nuclei **120 с**, passive probes **12** — в серверном `.env` этих ключей нет, действуют дефолты `config.py`.
 - [x] **`.env` на VPS:** URL/CORS/Mailpit/Postgres/SMTP→mailpit (тест); **GigaChat и ЮKassa не настроены**.
-- [x] **UX на проде:** таймер **10:00**; при раннем `completed` — ускорение циферблата **+5%/с к скорости**, моргание блока; stale/restart; все findings; HTML-отчёты без оплаты; **Итого** — compliance: «**N критических…**»; security: всего N / критических M.
+- [x] **UX на проде:** таймер **10:00**; при раннем `completed` — ускорение циферблата **+20%/с**, моргание **контура** (не цифр); stale/restart; все findings; HTML-отчёты без оплаты; **Итого** — compliance / security как в UI.
 - [x] **Cron (MSK):** вс **01:30** strict regression, **1-е 01:15** panel 50.
 - [ ] После каждого содержательного деплоя — сверить commit и при необходимости обновить дату в этом блоке и `docs/prod-snapshot.md`.
 

@@ -78,8 +78,8 @@ const STEPS = [
 const SCAN_COUNTDOWN_MS = 10 * 60 * 1000;
 const TICK_MS = 100;
 const COUNTDOWN_ZERO_MS = 45;
-/** Каждую секунду в режиме ускорения циферблат на 5% быстрее предыдущей скорости. */
-const ACCEL_STEP = 1.05;
+/** Каждую секунду в режиме ускорения циферблат на 20% быстрее предыдущей скорости. */
+const ACCEL_STEP = 1.2;
 /** Доп. ожидание, если основной таймер истёк, а API ещё running. */
 const EXTEND_WAIT_MS = 5 * 60 * 1000;
 const MAX_AUTO_RESTARTS = 2;
