@@ -85,6 +85,8 @@ const EXTEND_WAIT_MS = 5 * 60 * 1000;
 const MAX_AUTO_RESTARTS = 2;
 const POLL_MS = 3000;
 const POLL_MS_EXTEND = 2000;
+const REPORT_PRICE_SHORT = 490;
+const REPORT_PRICE_EXTENDED = 990;
 
 function scanCountdownMs(): number {
   return SCAN_COUNTDOWN_MS;
@@ -961,7 +963,7 @@ export function ScanResults({
               >
                 {reportDownload === "short"
                   ? "Готовим файл…"
-                  : "Скачать отчёт"}
+                  : `Скачать отчёт · ${REPORT_PRICE_SHORT} ₽`}
               </button>
               <button
                 type="button"
@@ -971,7 +973,7 @@ export function ScanResults({
               >
                 {reportDownload === "extended"
                   ? "Готовим файл…"
-                  : "Скачать расширенный отчёт"}
+                  : `Скачать расширенный отчёт · ${REPORT_PRICE_EXTENDED} 
               </button>
             </div>
 
