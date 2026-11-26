@@ -41,7 +41,30 @@ def test_short_report_contains_koap_and_rub():
 def test_extended_report_has_executor_section():
     text = compose_extended_report(
         _scan(),
-        [_finding(), _finding(id=2, type="seo", penalty_code="seo_title_short", legal_article=None, max_penalty=None)],
+        [
+            _finding(),
+            _finding(
+                id=2,
+                type="security",
+                severity="high",
+                title="Открытый .git",
+                penalty_code="security_git_exposed",
+                remediation="Закройте доступ к .git.",
+            ),
+            _finding(
+                id=3,
+                type="seo",
+                penalty_code="seo_title_short",
+                legal_article=None,
+                max_penalty=None,
+                remediation="Добавьте title 50–60 символов.",
+            ),
+        ],
     )
     assert "разработчика" in text.lower()
-    assert "penalty_code" in text
+    assert "Код в системе" in text
+    assert "Подробные рекомендации" in text
+    assert "Как убрать риск штрафов" in text
+    assert "Как исправить уязвимости" in text
+    assert "Рекомендации по SEO" in text
+    assert "Закройте доступ" in text

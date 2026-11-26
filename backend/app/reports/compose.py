@@ -152,10 +152,87 @@ def _sorted_findings(findings: list[Finding]) -> list[Finding]:
             t = _TYPE_ORDER.index(f.type)
         except ValueError:
             t = 99
-        sev = {"high": 0, "medium": 1, "low": 2}.get(f.severity, 3)
+        sev = {"high": 0, "medium": 1, "low": 2, "critical": 0}.get(f.severity, 3)
         return (t, sev, f.id)
 
     return sorted(findings, key=key)
+
+
+def _recommendation_lines(items: list[Finding], empty_text: str) -> list[str]:
+    lines: list[str] = []
+    if not items:
+        lines.append(empty_text)
+        lines.append("")
+        return lines
+    for i, f in enumerate(items, start=1):
+        action = (f.remediation or "").strip() or f.description.strip().split("\n")[0]
+        lines.append(f"{i}. **{f.title}**")
+        lines.append(f"   - {action}")
+        if f.legal_article and f.type == "compliance":
+            lines.append(f"   - Норма: {f.legal_article}")
+        elif f.type == "security" and f.legal_article:
+            lines.append(f"   - Связь с риском: {f.legal_article}")
+        lines.append("")
+    return lines
+
+
+def _detailed_recommendations(findings: list[Finding]) -> str:
+    """Три блока по пунктам: штрафы → уязвимости → SEO (только extended)."""
+    compliance = _sorted_findings(
+        [f for f in findings if f.type == "compliance"],
+    )
+    security = _sorted_findings(
+        [f for f in findings if f.type == "security"],
+    )
+    seo = _sorted_findings([f for f in findings if f.type == "seo"])
+
+    parts = [
+        "## Подробные рекомендации",
+        "",
+        "Действия по выявленным пунктам, в порядке приоритета для владельца "
+        "и подрядчиков.",
+        "",
+        "### 1. Как убрать риск штрафов (152‑ФЗ, 168‑ФЗ)",
+        "",
+        "Закрываем **фактические нарушения** с привязкой к КоАП — политика, "
+        "согласия, формы, cookie, реквизиты оператора и т.п.",
+        "",
+    ]
+    parts.extend(
+        _recommendation_lines(
+            compliance,
+            "По комплаенсу на проверенных страницах замечаний нет "
+            "(при неполном охвате повторите проверку после правок).",
+        ),
+    )
+    parts.append("### 2. Как исправить уязвимости")
+    parts.append("")
+    parts.append(
+        "Устраняем технические **риски утечки** и взлома: конфигурация, "
+        "заголовки, открытые пути, CORS и смежные сигналы."
+    )
+    parts.append("")
+    parts.extend(
+        _recommendation_lines(
+            security,
+            "Критичных уязвимостей в отчёте нет — держите обновления CMS, "
+            "сертификаты и заголовки безопасности.",
+        ),
+    )
+    parts.append("### 3. Рекомендации по SEO")
+    parts.append("")
+    parts.append(
+        "Штрафы КоАП по этому блоку обычно не применяются — цель: трафик, "
+        "сниппеты и индексация."
+    )
+    parts.append("")
+    parts.extend(
+        _recommendation_lines(
+            seo,
+            "Замечаний по SEO в рамках скана нет.",
+        ),
+    )
+    return "\n".join(parts)
 
 
 def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
@@ -226,6 +303,9 @@ def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
         "",
         _summary_money(findings),
         _scope_section(ctx),
+        _detailed_recommendations(findings),
+        "## Детализация по пунктам",
+        "",
     ]
     by_type: dict[str, list[Finding]] = {}
     for f in findings:
@@ -253,15 +333,14 @@ def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
             parts.extend(_executor_block(f))
         parts.append("")
 
-    parts.append("## План работ (порядок внедрения)")
+    parts.append("## Порядок внедрения")
     parts.append("")
     parts.append(
-        "1. Закрыть пункты с **высоким** риском по 152-ФЗ и открытые утечки (если есть)."
+        "1. Блок **«Как убрать риск штрафов»** — сначала пункты с высоким приоритетом."
     )
-    parts.append("2. Заголовки безопасности и CORS на веб-сервере / CDN.")
-    parts.append("3. Дописать политику, cookie и реквизиты оператора.")
-    parts.append("4. SEO: title, H1, sitemap, canonical.")
-    parts.append("5. Повторная проверка через 2–4 недели после правок.")
+    parts.append("2. Блок **«Как исправить уязвимости»** — открытые утечки и критичные сигналы.")
+    parts.append("3. Блок **«Рекомендации по SEO»** — после стабилизации комплаенса и безопасности.")
+    parts.append("4. Повторная проверка через 2–4 недели после правок.")
     parts.append("")
     parts.append("---")
     parts.append(_disclaimer())
