@@ -9,11 +9,11 @@ from app.reports.koap_links import KOAP_LAW_TOC, koap_13_11_link
 from app.reports.sanction_totals import contribution, totals_for_findings
 
 _TYPE_ORDER = ("compliance", "security", "access", "seo")
-_TYPE_TITLE = {
-    "compliance": "Нарушения 152/168-ФЗ (факты)",
-    "security": "Уязвимости и риск утечки ПДн",
-    "access": "Доступность проверки",
-    "seo": "Рекомендации по SEO",
+_REPORT_SECTION_TITLE = {
+    "compliance": "Штрафы и нарушения (152‑ФЗ, 168‑ФЗ)",
+    "security": "Технические риски и уязвимости",
+    "access": "Ограничения доступа при проверке",
+    "seo": "SEO и разметка",
 }
 _SEVERITY_RU = {
     "high": "высокий",
@@ -247,26 +247,68 @@ def _report_header(scan: Scan, title: str) -> list[str]:
     ]
 
 
-def _short_findings_section(findings: list[Finding]) -> str:
-    """Краткий отчёт: только факты и пояснения, без штрафов и инструкций."""
-    parts = ["## Список выявленного", ""]
-    if not findings:
-        parts.extend(["Замечаний не выявлено.", ""])
-        return "\n".join(parts)
+def _finding_item_lines(
+    f: Finding,
+    index: int,
+    *,
+    show_penalties: bool,
+    show_remediation: bool,
+) -> list[str]:
+    lines = [f"### {index}. {f.title}", ""]
+    lead = f.description.split("\n")[0].strip()
+    lines.append(f"**Суть:** {lead[:500]}")
+    if f.legal_article:
+        lines.append(f"**Норма:** {f.legal_article}")
+    if len(f.description.strip()) > len(lead):
+        lines.append(f"**Пояснение:** {f.description.strip()}")
+    lines.append(f"**Риск:** {_SEVERITY_RU.get(f.severity, f.severity)}.")
+    if show_penalties and f.type in ("compliance", "security"):
+        lines.append("**Ориентиры штрафов КоАП:**")
+        for row in _penalty_block(f):
+            lines.append(f"- {row}")
+    elif show_penalties and f.type == "seo":
+        lines.append(
+            "**Штрафы КоАП:** обычно не применяются (влияние на трафик и индексацию)."
+        )
+    elif show_penalties and f.type == "access":
+        lines.append(
+            "**Штрафы КоАП:** это не факт нарушения — оценка compliance может быть неполной."
+        )
+    if show_remediation and f.remediation:
+        lines.append(f"**Что сделать:** {f.remediation}")
+    lines.append("")
+    return lines
 
-    n = 0
-    for f in _sorted_findings(findings):
-        n += 1
-        parts.append(f"### {n}. {f.title}")
+
+def _structured_findings_sections(
+    findings: list[Finding],
+    *,
+    show_penalties: bool,
+    show_remediation: bool,
+) -> str:
+    """Разделы: штрафы / риски / доступ / SEO."""
+    by_type: dict[str, list[Finding]] = {}
+    for f in findings:
+        by_type.setdefault(f.type, []).append(f)
+
+    parts: list[str] = []
+    for t in _TYPE_ORDER:
+        items = _sorted_findings(by_type.get(t, []))
+        title = _REPORT_SECTION_TITLE.get(t, t)
+        parts.append(f"## {title}")
         parts.append("")
-        lead = f.description.split("\n")[0].strip()
-        parts.append(f"**Суть:** {lead[:500]}")
-        if f.legal_article:
-            parts.append(f"**Норма:** {f.legal_article}")
-        if len(f.description.strip()) > len(lead):
-            parts.append(f"**Пояснение:** {f.description.strip()}")
-        parts.append(f"**Риск:** {_SEVERITY_RU.get(f.severity, f.severity)}.")
-        parts.append("")
+        if not items:
+            parts.extend(["Пунктов в этой группе не выявлено.", ""])
+            continue
+        for i, f in enumerate(items, start=1):
+            parts.extend(
+                _finding_item_lines(
+                    f,
+                    i,
+                    show_penalties=show_penalties,
+                    show_remediation=show_remediation,
+                ),
+            )
     return "\n".join(parts)
 
 
@@ -292,25 +334,38 @@ def _executive_summary(findings: list[Finding]) -> str:
 
 
 def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
-    """Краткий отчёт (490 ₽): список проблем и пояснения без штрафов и «что сделать»."""
+    """Краткий (490 ₽): сводка сумм + разделы штрафы/риски/SEO, без «что сделать»."""
     ctx = _scan_context_dict(scan)
     parts = _report_header(scan, "Краткий отчёт по сайту")
+    parts.append(_summary_money(findings))
     parts.append(_scope_section(ctx))
-    parts.append(_short_findings_section(findings))
+    parts.append(
+        _structured_findings_sections(
+            findings,
+            show_penalties=True,
+            show_remediation=False,
+        ),
+    )
     parts.append("---")
     parts.append(_disclaimer())
     return "\n".join(parts)
 
 
 def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
-    """Расширенный (990 ₽): резюме + краткий список + рекомендации по устранению."""
+    """Расширенный (990 ₽): резюме + структура краткого + рекомендации по устранению."""
     ctx = _scan_context_dict(scan)
     parts = _report_header(scan, "Расширенный отчёт по сайту")
     parts.append(_disclaimer())
     parts.append("")
     parts.append(_executive_summary(findings))
     parts.append(_scope_section(ctx))
-    parts.append(_short_findings_section(findings))
+    parts.append(
+        _structured_findings_sections(
+            findings,
+            show_penalties=True,
+            show_remediation=False,
+        ),
+    )
     parts.append(_detailed_recommendations(findings))
     parts.append("---")
     parts.append(_disclaimer())

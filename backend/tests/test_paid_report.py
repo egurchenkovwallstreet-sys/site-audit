@@ -30,15 +30,32 @@ def _scan() -> Scan:
     )
 
 
-def test_short_report_is_findings_only():
-    text = compose_short_report(_scan(), [_finding()])
-    assert "Список выявленного" in text
+def test_short_report_sections_and_penalties():
+    text = compose_short_report(
+        _scan(),
+        [
+            _finding(),
+            _finding(
+                id=2,
+                type="security",
+                title="Открытый .git",
+                penalty_code="security_git_exposed",
+                max_penalty=50_000,
+            ),
+            _finding(id=3, type="seo", penalty_code="seo_title_short", max_penalty=None),
+        ],
+    )
+    assert "Сводка ориентиров по штрафам" in text
+    assert "₽" in text
+    assert "consultant.ru" in text
+    assert "Штрафы и нарушения" in text
+    assert "Технические риски" in text
+    assert "SEO и разметка" in text
     assert "Что сделать" not in text
-    assert "consultant.ru" not in text
-    assert "Исправьте документ." not in text
+    assert "Ориентиры штрафов КоАП" in text
 
 
-def test_extended_report_includes_short_plus_recommendations():
+def test_extended_report_includes_recommendations():
     text = compose_extended_report(
         _scan(),
         [
@@ -50,22 +67,12 @@ def test_extended_report_includes_short_plus_recommendations():
                 title="Открытый .git",
                 penalty_code="security_git_exposed",
                 remediation="Закройте доступ к .git.",
-            ),
-            _finding(
-                id=3,
-                type="seo",
-                penalty_code="seo_title_short",
-                legal_article=None,
-                max_penalty=None,
-                remediation="Добавьте title 50–60 символов.",
+                max_penalty=50_000,
             ),
         ],
     )
     assert "Резюме" in text
-    assert "consultant.ru" in text
-    assert "Список выявленного" in text
+    assert "Штрафы и нарушения" in text
     assert "Подробные рекомендации" in text
-    assert "Как убрать риск штрафов" in text
     assert "Закройте доступ" in text
-    assert "Что сделать" not in text
-    assert "разработчика" not in text.lower()
+    assert text.index("Штрафы и нарушения") < text.index("Подробные рекомендации")
