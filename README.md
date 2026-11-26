@@ -78,7 +78,8 @@ npm run dev
 
 ## Состояние разработки
 
-Выполненные и проверенные задачи отмечаются в [PROGRESS.md](PROGRESS.md).
+Выполненные и проверенные задачи отмечаются в [PROGRESS.md](PROGRESS.md).  
+Актуальный прод (лимиты, nginx, `.env` без секретов): [docs/prod-snapshot.md](docs/prod-snapshot.md).
 
 Продолжение в новом чате Cursor — скопируйте [docs/NEW_CHAT_PROMPT.md](docs/NEW_CHAT_PROMPT.md).
 
