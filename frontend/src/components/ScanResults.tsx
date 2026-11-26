@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import styles from "./ScanResults.module.css";
 import {
   isCriticalSummaryFinding,
@@ -133,6 +133,16 @@ function useScanCountdown(
       if (accelStartedAtRef.current === null) {
         accelStartedAtRef.current = Date.now();
       }
+      const end = deadlineRef.current;
+      if (end) {
+        const left = Math.max(0, end - Date.now());
+        if (left > remainingRef.current + 20) {
+          remainingRef.current = left;
+          setRemainingMs(left);
+          setZero(false);
+          setFinishing(false);
+        }
+      }
     } else {
       accelStartedAtRef.current = null;
     }
@@ -167,13 +177,6 @@ function useScanCountdown(
     tick();
     const id = window.setInterval(tick, TICK_MS);
     return () => window.clearInterval(id);
-  }, [active, accelerating]);
-
-  useEffect(() => {
-    if (!active && !accelerating) {
-      remainingRef.current = 0;
-      setRemainingMs(0);
-    }
   }, [active, accelerating]);
 
   return { remainingMs, finishing, zero };
@@ -633,8 +636,13 @@ export function ScanResults({
   const scanTerminal =
     scan?.status === "completed" || scan?.status === "failed";
 
+  /** Пока completed, но результат ещё скрыт — таймер не гасим до accelerating. */
   const countdownActive =
-    !countdownSettled && !extendedWait && (scanInFlight || accelerating);
+    !countdownSettled &&
+    !extendedWait &&
+    (scanInFlight ||
+      accelerating ||
+      scan?.status === "completed");
 
   const { remainingMs, finishing, zero } = useScanCountdown(
     scanId,
@@ -642,14 +650,14 @@ export function ScanResults({
     accelerating,
   );
 
-  /** Ранняя готовность API — ускоряем циферблат (+5%/с к скорости), потом результат. */
-  useEffect(() => {
-    if (scan?.status !== "completed" || countdownSettled || accelerating) {
+  /** Ранняя готовность API — сразу включаем ускорение циферблата (до paint). */
+  useLayoutEffect(() => {
+    if (scan?.status !== "completed" || countdownSettled) {
       return;
     }
     if (remainingMs > COUNTDOWN_ZERO_MS) {
       setAccelerating(true);
-    } else {
+    } else if (!accelerating) {
       setCountdownSettled(true);
     }
   }, [scan?.status, countdownSettled, accelerating, remainingMs]);
@@ -702,7 +710,8 @@ export function ScanResults({
     restarting,
   ]);
 
-  const revealOutcome = scanTerminal && countdownSettled;
+  const revealOutcome =
+    scanTerminal && countdownSettled && !accelerating;
   const loaderVisible = !revealOutcome;
 
   const { complianceFindings, seoFindings, breachFindings, accessFindings } =
