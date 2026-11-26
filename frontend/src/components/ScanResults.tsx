@@ -973,7 +973,7 @@ export function ScanResults({
               >
                 {reportDownload === "extended"
                   ? "Готовим файл…"
-                  : `Скачать расширенный отчёт · ${REPORT_PRICE_EXTENDED} 
+                  : `Скачать расширенный отчёт · ${REPORT_PRICE_EXTENDED} ₽`}
               </button>
             </div>
 
