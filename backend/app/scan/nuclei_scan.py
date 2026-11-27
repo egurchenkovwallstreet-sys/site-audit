@@ -7,6 +7,7 @@ from typing import Any
 
 from app.config import get_settings
 from app.data.security_breach_risks import apply_breach_penalty
+from app.scan.scan_coverage import nuclei_time_budget_finding
 from app.scan.technical_checker import _finding
 
 SEVERITY_MAP = {
@@ -65,17 +66,7 @@ async def run_nuclei_scan(target_url: str, *, timeout_sec: float) -> list[dict[s
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
-        row = _finding(
-            title="Активная проверка Nuclei прервана по лимиту времени",
-            description=(
-                f"Шаблоны exposure/misconfig/cve на {target_url} "
-                f"не завершились за {int(run_timeout)} с."
-            ),
-            severity="low",
-            remediation="Повторите проверку или сузьте scope.",
-            issue_key="nuclei_time_budget",
-        )
-        return [apply_breach_penalty(row, "server_disclosure")]
+        return [nuclei_time_budget_finding(target_url, timeout_sec=run_timeout)]
 
     findings: list[dict[str, Any]] = []
     for line in lines:

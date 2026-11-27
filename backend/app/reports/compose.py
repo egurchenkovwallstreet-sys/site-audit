@@ -9,6 +9,7 @@ from app.reports.koap_links import KOAP_LAW_TOC, koap_13_11_link
 from app.reports.sanction_totals import contribution, totals_for_findings
 
 _TYPE_ORDER = ("compliance", "security", "access", "seo")
+_COVERAGE_TYPE = "coverage"
 _REPORT_SECTION_TITLE = {
     "compliance": "Штрафы и нарушения (152‑ФЗ, 168‑ФЗ)",
     "security": "Технические риски и уязвимости",
@@ -98,7 +99,16 @@ def _disclaimer() -> str:
     )
 
 
-def _scope_section(ctx: dict) -> str:
+def _report_findings(findings: list[Finding]) -> list[Finding]:
+    """Пункты для штрафов/рисков; ограничения охвата — отдельно в блоке охвата."""
+    return [f for f in findings if f.type != _COVERAGE_TYPE]
+
+
+def _coverage_findings(findings: list[Finding]) -> list[Finding]:
+    return [f for f in findings if f.type == _COVERAGE_TYPE]
+
+
+def _scope_section(ctx: dict, findings: list[Finding] | None = None) -> str:
     lines = ["## Охват проверки", ""]
     pages = ctx.get("pages_checked")
     if pages is not None:
@@ -121,6 +131,11 @@ def _scope_section(ctx: dict) -> str:
             lines.append(f"  - {u}")
         if len(scanned) > 12:
             lines.append(f"  - … и ещё {len(scanned) - 12}")
+    for cov in _coverage_findings(findings or []):
+        short = cov.description.replace("\n", " ").strip()
+        if len(short) > 320:
+            short = short[:317].rstrip() + "…"
+        lines.append(f"- *Доп. проверка:* {cov.title}. {short}")
     lines.append("")
     return "\n".join(lines)
 
@@ -314,14 +329,15 @@ def _structured_findings_sections(
 
 def _executive_summary(findings: list[Finding]) -> str:
     """Резюме для расширенного отчёта: суммы КоАП и приоритеты."""
-    high = [f for f in findings if f.severity in ("high", "critical")]
+    reportable = _report_findings(findings)
+    high = [f for f in reportable if f.severity in ("high", "critical")]
     parts = [
         "## Резюме",
         "",
-        f"**Всего пунктов:** {len(findings)}; **высокий приоритет:** {len(high)}.",
+        f"**Всего пунктов:** {len(reportable)}; **высокий приоритет:** {len(high)}.",
         "",
     ]
-    money = _summary_money(findings)
+    money = _summary_money(reportable)
     for line in money.split("\n"):
         if line.startswith("## "):
             continue
@@ -336,12 +352,13 @@ def _executive_summary(findings: list[Finding]) -> str:
 def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
     """Краткий (490 ₽): сводка сумм + разделы штрафы/риски/SEO, без «что сделать»."""
     ctx = _scan_context_dict(scan)
+    reportable = _report_findings(findings)
     parts = _report_header(scan, "Краткий отчёт по сайту")
-    parts.append(_summary_money(findings))
-    parts.append(_scope_section(ctx))
+    parts.append(_summary_money(reportable))
+    parts.append(_scope_section(ctx, findings))
     parts.append(
         _structured_findings_sections(
-            findings,
+            reportable,
             show_penalties=True,
             show_remediation=False,
         ),
@@ -354,19 +371,20 @@ def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
 def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
     """Расширенный (990 ₽): резюме + структура краткого + рекомендации по устранению."""
     ctx = _scan_context_dict(scan)
+    reportable = _report_findings(findings)
     parts = _report_header(scan, "Расширенный отчёт по сайту")
     parts.append(_disclaimer())
     parts.append("")
     parts.append(_executive_summary(findings))
-    parts.append(_scope_section(ctx))
+    parts.append(_scope_section(ctx, findings))
     parts.append(
         _structured_findings_sections(
-            findings,
+            reportable,
             show_penalties=True,
             show_remediation=False,
         ),
     )
-    parts.append(_detailed_recommendations(findings))
+    parts.append(_detailed_recommendations(reportable))
     parts.append("---")
     parts.append(_disclaimer())
     return "\n".join(parts)
