@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
 
 from app.compliance.js_text import decode_js_unicode_escapes
-from app.compliance.privacy_detection import _page_content_is_privacy_policy
+from app.compliance.privacy_detection import (
+    PRIVACY_HREF_MARKERS,
+    _page_content_is_privacy_policy,
+)
 from app.compliance.spa_bundle_scan import SpaBundleScan, _body_has_privacy
 
 # Ч. 4 ст. 18.1 152-ФЗ — обязательные сведения в политике (упрощённо для автопроверки)
@@ -107,29 +111,46 @@ def analyze_privacy_policy_text(
     )
 
 
+def _privacy_document_url_score(url: str) -> int:
+    """Выше — надёжнее источник текста политики (не JS-бандл главной)."""
+    blob = unquote(url).lower()
+    if any(m in blob for m in (".js", ".mjs", "chunks/")):
+        return 0
+    if "/privacy" in blob or "privacy-policy" in blob or "privacy_policy" in blob:
+        return 3
+    if any(m in blob for m in PRIVACY_HREF_MARKERS):
+        return 2
+    return 1
+
+
 def extract_policy_text_from_scan(
     page_pairs: list[tuple[str, str]],
     spa: SpaBundleScan | None,
 ) -> tuple[str | None, str | None]:
     """Текст политики только если содержимое реально прочитано."""
-    best: tuple[int, str, str] | None = None
+    best: tuple[int, int, str, str] | None = None
 
     for url, html in page_pairs:
         if not html or not _page_content_is_privacy_policy(html):
             continue
         norm = _normalize_policy_text(html)
+        score = _privacy_document_url_score(url)
         if len(norm) >= MIN_POLICY_CHARS and (
-            best is None or len(norm) > best[0]
+            best is None
+            or (score, len(norm)) > (best[0], best[1])
         ):
-            best = (len(norm), url, html)
+            best = (score, len(norm), url, html)
 
     if spa and spa.privacy_script_body and _body_has_privacy(spa.privacy_script_body):
         norm = _normalize_policy_text(spa.privacy_script_body)
-        if len(norm) >= MIN_POLICY_CHARS:
-            src = spa.privacy_script_url or "spa-bundle"
-            if best is None or len(norm) > best[0]:
-                best = (len(norm), src, spa.privacy_script_body)
+        src = spa.privacy_script_url or "spa-bundle"
+        score = _privacy_document_url_score(src)
+        if len(norm) >= MIN_POLICY_CHARS and (
+            best is None
+            or (score, len(norm)) > (best[0], best[1])
+        ):
+            best = (score, len(norm), src, spa.privacy_script_body)
 
     if best is None:
         return None, None
-    return best[2], best[1]
+    return best[3], best[2]

@@ -26,7 +26,9 @@ if ! grep -q "site-audit-security-headers" "$CONF"; then
   sed -i '/listen 443 ssl;/a \    include /etc/nginx/conf.d/site-audit-security-headers.conf;' "$CONF"
 fi
 
-if ! grep -q 'server_tokens off' /etc/nginx/nginx.conf; then
+if grep -qE '^[[:space:]]*#.*server_tokens' /etc/nginx/nginx.conf; then
+  sed -i -E 's/^[[:space:]]*#([[:space:]]*server_tokens\s+off;)/\1/' /etc/nginx/nginx.conf
+elif ! grep -qE '^[[:space:]]*server_tokens\s+off' /etc/nginx/nginx.conf; then
   sed -i '/http {/a \    server_tokens off;' /etc/nginx/nginx.conf
 fi
 
