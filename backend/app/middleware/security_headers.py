@@ -29,5 +29,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         for key, value in _SECURITY_HEADERS.items():
             if key not in response.headers:
                 response.headers[key] = value
-        response.headers.pop("x-powered-by", None)
+        if "x-powered-by" in response.headers:
+            del response.headers["x-powered-by"]
         return response
