@@ -28,6 +28,7 @@ def _scan() -> Scan:
         target_url="https://darom-app.online/",
         status=ScanStatus.COMPLETED.value,
         context_json='{"pages_checked": 22, "privacy_found": true}',
+        public_token="test-token-for-paid-report-42",
     )
 
 

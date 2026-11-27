@@ -6,9 +6,11 @@ import { ScanResults } from "@/components/ScanResults";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import styles from "../../home.module.css";
 
-export function CheckPageClient({ scanId }: { scanId: number }) {
+const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
+
+export function CheckPageClient({ scanToken }: { scanToken: string }) {
   const router = useRouter();
-  const valid = Number.isFinite(scanId) && scanId > 0;
+  const valid = TOKEN_RE.test(scanToken);
 
   useEffect(() => {
     if (!valid) {
@@ -28,7 +30,7 @@ export function CheckPageClient({ scanId }: { scanId: number }) {
       <main className={styles.main}>
         <div className={styles.panel}>
           <ScanResults
-            scanId={scanId}
+            scanToken={scanToken}
             onReset={() => router.push("/")}
           />
         </div>

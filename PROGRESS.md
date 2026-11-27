@@ -31,12 +31,15 @@
 
 ### B1. Домен и HTTPS
 
-- [ ] DNS, TLS (nginx `:443` или согласованная схема с ai-aggregator на `:80`).
-- [ ] `.env`: `PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `CORS_ORIGINS`, `PAYMENT_RETURN_URL` на https-домен.
-- [ ] Ребилд frontend; SEO — `docs/seo-setup.md`.
+- [x] DNS **audit152fz.online** / **www** → `194.87.220.206` (Reg.ru).
+- [x] Nginx `server_name` на `:80/:443`, Let's Encrypt (до **2027-02-25**), прод: **https://audit152fz.online**.
+- [x] `.env` на VPS: `PUBLIC_SITE_URL`, API/CORS/return → `https://audit152fz.online`, redeploy.
+- [ ] Яндекс/Google вебмастер, sitemap — `docs/seo-setup.md`.
+- [ ] Закоммитить `deploy/nginx-site-audit-domain.conf` в репо (на сервере конфиг после certbot).
 
 ### B2. Безопасность (шаг 11)
 
+- [x] Доступ к результатам только по **секретному токену** в URL (`public_token`, API `/api/scans/t/{token}`); перебор `/check/310` не работает.
 - [ ] Rate limit `POST /api/scans`, SSRF/валидация URL.
 - [ ] Заголовки HSTS/CSP на прокси; ограничить доступ к Mailpit/Swagger в проде.
 - [ ] Firewall, бэкапы Postgres, ротация секретов.

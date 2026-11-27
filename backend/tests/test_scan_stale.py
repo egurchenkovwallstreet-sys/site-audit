@@ -14,5 +14,6 @@ def test_scan_age_for_old_running():
         target_url="https://example.com/",
         status=ScanStatus.RUNNING.value,
         created_at=datetime.now(timezone.utc) - timedelta(seconds=stale_after_sec() + 10),
+        public_token="stale-test-token",
     )
     assert _scan_age_sec(scan) > stale_after_sec()

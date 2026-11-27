@@ -22,6 +22,7 @@ from app.services.outreach_message import (
 )
 from app.reports.compose import compose_extended_report, compose_short_report
 from app.reports.html_render import render_paid_report_html
+from app.services.scan_access import new_public_token, scan_by_public_token
 from app.services.scan_runner import run_compliance_scan
 from app.services.scan_stale import (
     mark_scan_failed,
@@ -63,6 +64,7 @@ class ScanContext(BaseModel):
 
 class ScanResponse(BaseModel):
     id: int
+    public_token: str
     target_url: str
     status: str
     context: ScanContext | None = None
@@ -182,7 +184,11 @@ async def create_scan(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    scan = Scan(target_url=target, status=ScanStatus.PENDING.value)
+    scan = Scan(
+        target_url=target,
+        status=ScanStatus.PENDING.value,
+        public_token=new_public_token(),
+    )
     session.add(scan)
     await session.commit()
     await session.refresh(scan)
@@ -210,6 +216,7 @@ def _scan_response(scan: Scan) -> ScanResponse:
 
     return ScanResponse(
         id=scan.id,
+        public_token=scan.public_token,
         target_url=scan.target_url,
         status=scan.status,
         context=ctx,
@@ -218,25 +225,23 @@ def _scan_response(scan: Scan) -> ScanResponse:
     )
 
 
-@router.get("/{scan_id}", response_model=ScanResponse)
-async def get_scan(scan_id: int, session: AsyncSession = Depends(get_db)) -> ScanResponse:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+@router.get("/t/{token}", response_model=ScanResponse)
+async def get_scan_by_token(
+    token: str, session: AsyncSession = Depends(get_db)
+) -> ScanResponse:
+    scan = await scan_by_public_token(session, token)
     await reconcile_stale_scan(session, scan)
     await session.refresh(scan)
     return _scan_response(scan)
 
 
-@router.post("/{scan_id}/restart", response_model=ScanResponse)
+@router.post("/t/{token}/restart", response_model=ScanResponse)
 async def restart_stale_scan(
-    scan_id: int,
+    token: str,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
 ) -> ScanResponse:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
     if scan.status == ScanStatus.COMPLETED.value:
         raise HTTPException(
             status_code=409,
@@ -250,16 +255,14 @@ async def restart_stale_scan(
     return _scan_response(scan)
 
 
-@router.get("/{scan_id}/findings", response_model=list[FindingResponse])
+@router.get("/t/{token}/findings", response_model=list[FindingResponse])
 async def get_scan_findings(
-    scan_id: int, session: AsyncSession = Depends(get_db)
+    token: str, session: AsyncSession = Depends(get_db)
 ) -> list[FindingResponse]:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
 
     result = await session.execute(
-        select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.id)
+        select(Finding).where(Finding.scan_id == scan.id).order_by(Finding.id)
     )
     findings = result.scalars().all()
     return [
@@ -315,15 +318,13 @@ def _contact_emails_from_scan(scan: Scan) -> list[str]:
         return []
 
 
-@router.get("/{scan_id}/paid-report", response_model=PaidReportResponse)
+@router.get("/t/{token}/paid-report", response_model=PaidReportResponse)
 async def paid_report_preview(
-    scan_id: int,
+    token: str,
     variant: str = "short",
     session: AsyncSession = Depends(get_db),
 ) -> PaidReportResponse:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
     if scan.status != ScanStatus.COMPLETED.value:
         raise HTTPException(
             status_code=409,
@@ -334,7 +335,7 @@ async def paid_report_preview(
             status_code=400,
             detail="variant должен быть short или extended",
         )
-    findings = await _scan_findings(session, scan_id)
+    findings = await _scan_findings(session, scan.id)
     markdown = (
         compose_extended_report(scan, findings)
         if variant == "extended"
@@ -343,15 +344,13 @@ async def paid_report_preview(
     return PaidReportResponse(variant=variant, markdown=markdown)
 
 
-@router.get("/{scan_id}/paid-report/download")
+@router.get("/t/{token}/paid-report/download")
 async def paid_report_download(
-    scan_id: int,
+    token: str,
     variant: str = "short",
     session: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
     if scan.status != ScanStatus.COMPLETED.value:
         raise HTTPException(
             status_code=409,
@@ -362,7 +361,7 @@ async def paid_report_download(
             status_code=400,
             detail="variant должен быть short или extended",
         )
-    findings = await _scan_findings(session, scan_id)
+    findings = await _scan_findings(session, scan.id)
     content, filename = render_paid_report_html(scan, findings, variant)
     return HTMLResponse(
         content=content,
@@ -373,17 +372,15 @@ async def paid_report_download(
     )
 
 
-@router.get("/{scan_id}/outreach-email-preview", response_model=OutreachEmailPreviewResponse)
+@router.get("/t/{token}/outreach-email-preview", response_model=OutreachEmailPreviewResponse)
 async def outreach_email_preview(
-    scan_id: int,
+    token: str,
     to_email: EmailStr,
     session: AsyncSession = Depends(get_db),
 ) -> OutreachEmailPreviewResponse:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
     to_norm = _validate_outreach_recipient(scan, str(to_email))
-    findings = await _scan_findings(session, scan_id)
+    findings = await _scan_findings(session, scan.id)
     subject, body = compose_outreach_letter(scan, findings)
     meta = outreach_delivery_meta()
     return OutreachEmailPreviewResponse(
@@ -395,9 +392,9 @@ async def outreach_email_preview(
     )
 
 
-@router.post("/{scan_id}/send-preview-email", response_model=SendPreviewEmailResponse)
+@router.post("/t/{token}/send-preview-email", response_model=SendPreviewEmailResponse)
 async def send_preview_email(
-    scan_id: int,
+    token: str,
     body: SendPreviewEmailRequest,
     session: AsyncSession = Depends(get_db),
 ) -> SendPreviewEmailResponse:
@@ -407,20 +404,18 @@ async def send_preview_email(
             detail="Отправка не настроена: включите Mailpit или SMTP (см. docs/smtp-setup.md).",
         )
 
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        raise HTTPException(status_code=404, detail="Скан не найден")
+    scan = await scan_by_public_token(session, token)
     to_norm = _validate_outreach_recipient(scan, str(body.to_email))
 
     now = time.monotonic()
-    last = _last_preview_send_at.get(scan_id, 0.0)
+    last = _last_preview_send_at.get(scan.id, 0.0)
     if now - last < _SEND_PREVIEW_COOLDOWN_SEC:
         raise HTTPException(
             status_code=429,
             detail="Подождите минуту перед повторной отправкой с этого скана.",
         )
 
-    findings = await _scan_findings(session, scan_id)
+    findings = await _scan_findings(session, scan.id)
     subject, text_body = compose_outreach_letter(scan, findings)
 
     message = EmailMessage()
@@ -438,7 +433,7 @@ async def send_preview_email(
             detail=f"SMTP не принял письмо: {exc}",
         ) from exc
 
-    _last_preview_send_at[scan_id] = now
+    _last_preview_send_at[scan.id] = now
     meta = outreach_delivery_meta()
     inbox = meta.get("test_inbox_url")
     return SendPreviewEmailResponse(

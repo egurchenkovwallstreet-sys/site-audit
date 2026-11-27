@@ -11,7 +11,6 @@ type PageProps = {
 };
 
 export default async function CheckPage({ params }: PageProps) {
-  const { id } = await params;
-  const scanId = Number.parseInt(id, 10);
-  return <CheckPageClient scanId={scanId} />;
+  const { id: token } = await params;
+  return <CheckPageClient scanToken={token} />;
 }

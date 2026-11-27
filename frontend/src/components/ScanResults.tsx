@@ -35,6 +35,7 @@ type ScanContext = {
 
 type Scan = {
   id: number;
+  public_token: string;
   target_url: string;
   status: string;
   context?: ScanContext | null;
@@ -109,7 +110,7 @@ function formatCountdownTenths(remainingMs: number): string {
 }
 
 function useScanCountdown(
-  scanId: number,
+  scanToken: string,
   active: boolean,
   accelerating: boolean,
 ) {
@@ -128,7 +129,7 @@ function useScanCountdown(
     setRemainingMs(est);
     setFinishing(false);
     setZero(false);
-  }, [scanId]);
+  }, [scanToken]);
 
   useEffect(() => {
     if (accelerating) {
@@ -395,7 +396,13 @@ function FindingItems({ items }: { items: Finding[] }) {
   );
 }
 
-function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
+function EmailSendRow({
+  scanToken,
+  email,
+}: {
+  scanToken: string;
+  email: string;
+}) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorText, setErrorText] = useState<string | null>(null);
   const [inboxUrl, setInboxUrl] = useState<string | null>(null);
@@ -412,7 +419,7 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
     try {
       const q = encodeURIComponent(email);
       const res = await fetch(
-        `/api/scans/${scanId}/outreach-email-preview?to_email=${q}`,
+        `/api/scans/t/${scanToken}/outreach-email-preview?to_email=${q}`,
       );
       const data = (await res.json().catch(() => ({}))) as {
         detail?: string;
@@ -445,7 +452,7 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
     setState("sending");
     setErrorText(null);
     try {
-      const res = await fetch(`/api/scans/${scanId}/send-preview-email`, {
+      const res = await fetch(`/api/scans/t/${scanToken}/send-preview-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to_email: email }),
@@ -543,11 +550,11 @@ function EmailSendRow({ scanId, email }: { scanId: number; email: string }) {
 }
 
 export function ScanResults({
-  scanId,
+  scanToken,
   targetUrl,
   onReset,
 }: {
-  scanId: number;
+  scanToken: string;
   targetUrl?: string;
   onReset: () => void;
 }) {
@@ -571,7 +578,7 @@ export function ScanResults({
     let tick = 0;
 
     async function poll() {
-      const res = await fetch(`/api/scans/${scanId}`);
+      const res = await fetch(`/api/scans/t/${scanToken}`);
       if (!res.ok) return;
       const data: Scan = await res.json();
       if (!active) return;
@@ -584,7 +591,7 @@ export function ScanResults({
       }
 
       if (data.status === "completed") {
-        const fr = await fetch(`/api/scans/${scanId}/findings`);
+        const fr = await fetch(`/api/scans/t/${scanToken}/findings`);
         if (fr.ok) {
           const raw: Finding[] = await fr.json();
           setFindings(sortFindings(raw));
@@ -600,7 +607,7 @@ export function ScanResults({
     return () => {
       active = false;
     };
-  }, [scanId, pollToken, extendedWait]);
+  }, [scanToken, pollToken, extendedWait]);
 
   useEffect(() => {
     setAccelerating(false);
@@ -609,13 +616,13 @@ export function ScanResults({
     setExtraMs(EXTEND_WAIT_MS);
     setRestartCount(0);
     setRestarting(false);
-  }, [scanId]);
+  }, [scanToken]);
 
   async function restartScanOnServer() {
     if (restarting) return;
     setRestarting(true);
     try {
-      const res = await fetch(`/api/scans/${scanId}/restart`, {
+      const res = await fetch(`/api/scans/t/${scanToken}/restart`, {
         method: "POST",
       });
       if (!res.ok) return;
@@ -647,7 +654,7 @@ export function ScanResults({
       scan?.status === "completed");
 
   const { remainingMs, finishing, zero } = useScanCountdown(
-    scanId,
+    scanToken,
     countdownActive,
     accelerating,
   );
@@ -781,14 +788,14 @@ export function ScanResults({
     setReportDownload(variant);
     try {
       const res = await fetch(
-        `/api/scans/${scanId}/paid-report/download?variant=${variant}`,
+        `/api/scans/t/${scanToken}/paid-report/download?variant=${variant}`,
       );
       if (!res.ok) {
         return;
       }
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition");
-      let filename = `otchet-${scanId}-${variant}.html`;
+      let filename = `otchet-${variant}.html`;
       if (disposition) {
         const m = /filename="([^"]+)"/.exec(disposition);
         if (m?.[1]) {
@@ -1054,7 +1061,11 @@ export function ScanResults({
               scan.context.contact_emails.length > 0 ? (
                 <ul className={styles.emailList}>
                   {scan.context.contact_emails.map((email) => (
-                    <EmailSendRow key={email} scanId={scanId} email={email} />
+                    <EmailSendRow
+                      key={email}
+                      scanToken={scanToken}
+                      email={email}
+                    />
                   ))}
                 </ul>
               ) : (

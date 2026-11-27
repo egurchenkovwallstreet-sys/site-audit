@@ -121,6 +121,9 @@ class Scan(Base):
     ownership_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    public_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
 
     user: Mapped[User | None] = relationship(back_populates="scans")
     findings: Mapped[list[Finding]] = relationship(

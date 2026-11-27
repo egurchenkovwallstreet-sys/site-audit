@@ -26,7 +26,7 @@ export function HomeClient() {
         </header>
         <div className={styles.panel}>
           <ScanForm
-            onStarted={(id) => router.push(`/check/${id}`)}
+            onStarted={(token) => router.push(`/check/${token}`)}
           />
         </div>
         <HomePitch />

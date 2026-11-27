@@ -6,7 +6,7 @@ import styles from "./ScanForm.module.css";
 export function ScanForm({
   onStarted,
 }: {
-  onStarted: (scanId: number) => void;
+  onStarted: (publicToken: string) => void;
 }) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,11 @@ export function ScanForm({
         );
         return;
       }
-      onStarted(data.id);
+      if (typeof data.public_token !== "string" || !data.public_token) {
+        setError("Сервер вернул неожиданный ответ.");
+        return;
+      }
+      onStarted(data.public_token);
     } catch {
       setError("Сервер недоступен. Попробуйте позже.");
     } finally {
