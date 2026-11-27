@@ -868,6 +868,16 @@
   line-height: 1.45;
 }
 
+.successBannerLead {
+  margin: 0;
+}
+
+.successBannerAccent {
+  margin: calc(0.55rem * var(--ui)) 0 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .accessBanner {
   margin-bottom: calc(1rem * var(--ui));
   padding: calc(1rem * var(--ui)) calc(1.1rem * var(--ui));

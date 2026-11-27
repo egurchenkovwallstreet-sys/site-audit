@@ -750,6 +750,13 @@ export function ScanResults({
     complianceRan &&
     complianceFindings.length === 0 &&
     accessFindings.length === 0;
+  const breachClean =
+    revealOutcome &&
+    scan?.status === "completed" &&
+    complianceRan &&
+    breachFindings.length === 0 &&
+    accessFindings.length === 0;
+  const fullyCleanScan = complianceClean && breachClean;
   const noFindingsAtAll =
     findings.filter((f) => f.type !== "access").length === 0;
 
@@ -941,12 +948,21 @@ export function ScanResults({
           По 152-ФЗ на проверенной странице нарушений со штрафом не найдено.
         </div>
       ) : null}
-      {revealOutcome && scan?.status === "completed" ? (
-        noFindingsAtAll ? (
-          <p className={styles.sectionEmpty}>
-            Замечаний по 152-ФЗ и техническому прогнозу не найдено.
+      {breachClean && revealOutcome ? (
+        <div className={styles.successBanner}>
+          <p className={styles.successBannerLead}>
+            По технической проверке уязвимостей и прогнозу утечки замечаний не
+            найдено.
           </p>
-        ) : (
+          {fullyCleanScan ? (
+            <p className={styles.successBannerAccent}>
+              Поздравляем, ваш сайт входит в 15% надёжных и защищенных сайтов!
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {revealOutcome && scan?.status === "completed" ? (
+        noFindingsAtAll ? null : (
           <>
             <div className={styles.totalsBlock} role="status">
               <GrandTotalBlock
