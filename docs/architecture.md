@@ -7,3 +7,13 @@
 
 Локально frontend доступен на `http://localhost:3000`, backend — на
 `http://localhost:8000`.
+
+## Сейчас (MVP)
+
+Скан запускается из API через `BackgroundTasks` в том же процессе, что и uvicorn
+(см. `backend/app/api/scans.py`). Подходит для ограниченной нагрузки.
+
+## Целевое масштабирование
+
+Перед рекламой и **≥20 параллельных сканов** — отдельное ТЗ: **`docs/mass-scale-tz.md`**
+(API + Redis-очередь + пул scan-worker, лимиты, мониторинг).

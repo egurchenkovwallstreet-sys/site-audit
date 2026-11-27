@@ -7,7 +7,6 @@ from typing import Any
 
 from app.config import get_settings
 from app.data.security_breach_risks import apply_breach_penalty
-from app.scan.scan_coverage import nuclei_time_budget_finding
 from app.scan.technical_checker import _finding
 
 SEVERITY_MAP = {
@@ -66,7 +65,8 @@ async def run_nuclei_scan(target_url: str, *, timeout_sec: float) -> list[dict[s
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
-        return [nuclei_time_budget_finding(target_url, timeout_sec=run_timeout)]
+        # Таймаут — неполный охват, не уязвимость; на экране и в сводке не показываем.
+        return []
 
     findings: list[dict[str, Any]] = []
     for line in lines:

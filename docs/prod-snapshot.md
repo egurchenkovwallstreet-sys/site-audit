@@ -10,7 +10,8 @@
 
 | Параметр | Значение |
 |----------|----------|
-| UI + API | http://194.87.220.206:8080 |
+| UI + API (боевой) | **https://audit152fz.online** |
+| UI + API (отладка) | http://194.87.220.206:8080 |
 | Mailpit (просмотр писем) | http://194.87.220.206:8081 |
 | VPS | `root@194.87.220.206` |
 | Каталог | `/root/apps/site-audit` |
@@ -41,9 +42,9 @@
 
 - `APP_ENV=production`
 - `SITE_ADDRESS=:80` (для Caddy, если включат; сейчас не используется)
-- `PUBLIC_SITE_URL=http://194.87.220.206:8080`
-- `NEXT_PUBLIC_API_URL=http://194.87.220.206:8080`
-- `CORS_ORIGINS=http://194.87.220.206:8080`
+- `PUBLIC_SITE_URL=https://audit152fz.online`
+- `NEXT_PUBLIC_API_URL=https://audit152fz.online`
+- `CORS_ORIGINS=https://audit152fz.online`
 - `PAYMENT_RETURN_URL=http://194.87.220.206:8080/reports`
 - Postgres: `POSTGRES_*`, `DATABASE_URL` (пароль только на сервере)
 - SMTP тест: `SMTP_HOST=mailpit`, порт `1025`, `SMTP_ALLOW_UNAUTHENTICATED=true`, `MAILPIT_PUBLIC_URL=http://194.87.220.206:8081`

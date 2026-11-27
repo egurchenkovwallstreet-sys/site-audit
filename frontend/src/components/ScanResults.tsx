@@ -348,26 +348,6 @@ function SeoRecommendationItems({ items }: { items: Finding[] }) {
   );
 }
 
-function CoverageNotes({ items }: { items: Finding[] }) {
-  if (items.length === 0) {
-    return null;
-  }
-  return (
-    <div className={styles.coverageNote} role="note">
-      <p className={styles.coverageTitle}>Не всё успели проверить</p>
-      <p className={styles.coverageLead}>
-        Это не штраф и не уязвимость — просто шаг скана не уложился в лимит времени.
-      </p>
-      {items.map((f) => (
-        <div key={f.id}>
-          <p className={styles.coverageItemTitle}>{f.title}</p>
-          <p className={styles.itemMeta}>{f.description}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function FindingItems({ items }: { items: Finding[] }) {
   if (items.length === 0) {
     return null;
@@ -743,15 +723,9 @@ export function ScanResults({
     scanTerminal && countdownSettled && !accelerating;
   const loaderVisible = !revealOutcome;
 
-  const {
-    complianceFindings,
-    seoFindings,
-    breachFindings,
-    accessFindings,
-    coverageFindings,
-  } = useMemo(() => {
+  const { complianceFindings, seoFindings, breachFindings, accessFindings } =
+    useMemo(() => {
     const accessFindings = findings.filter((f) => f.type === "access");
-    const coverageFindings = findings.filter((f) => f.type === "coverage");
     const complianceFindings = sortFindings(
       findings.filter((f) => f.type === "compliance"),
     );
@@ -763,7 +737,6 @@ export function ScanResults({
     );
     return {
       accessFindings,
-      coverageFindings,
       complianceFindings,
       seoFindings,
       breachFindings,
@@ -778,8 +751,7 @@ export function ScanResults({
     complianceFindings.length === 0 &&
     accessFindings.length === 0;
   const noFindingsAtAll =
-    findings.filter((f) => f.type !== "access" && f.type !== "coverage")
-      .length === 0;
+    findings.filter((f) => f.type !== "access").length === 0;
 
   const complianceSanctions = useMemo(
     () => complianceSanctionTotals(findings),
@@ -963,9 +935,6 @@ export function ScanResults({
           <p className={styles.accessTitle}>{accessFindings[0].title}</p>
           <p className={styles.itemMeta}>{accessFindings[0].description}</p>
         </div>
-      ) : null}
-      {revealOutcome && coverageFindings.length > 0 ? (
-        <CoverageNotes items={coverageFindings} />
       ) : null}
       {complianceClean && revealOutcome ? (
         <div className={styles.successBanner}>

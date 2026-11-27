@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     scan_max_pages: int = 30
 
     nuclei_enabled: bool = True
-    nuclei_timeout_sec: int = 120
+    nuclei_timeout_sec: int = 180
     passive_probe_max: int = 12
 
     public_site_url: str = "http://localhost:3000"

@@ -104,11 +104,7 @@ def _report_findings(findings: list[Finding]) -> list[Finding]:
     return [f for f in findings if f.type != _COVERAGE_TYPE]
 
 
-def _coverage_findings(findings: list[Finding]) -> list[Finding]:
-    return [f for f in findings if f.type == _COVERAGE_TYPE]
-
-
-def _scope_section(ctx: dict, findings: list[Finding] | None = None) -> str:
+def _scope_section(ctx: dict) -> str:
     lines = ["## Охват проверки", ""]
     pages = ctx.get("pages_checked")
     if pages is not None:
@@ -131,11 +127,6 @@ def _scope_section(ctx: dict, findings: list[Finding] | None = None) -> str:
             lines.append(f"  - {u}")
         if len(scanned) > 12:
             lines.append(f"  - … и ещё {len(scanned) - 12}")
-    for cov in _coverage_findings(findings or []):
-        short = cov.description.replace("\n", " ").strip()
-        if len(short) > 320:
-            short = short[:317].rstrip() + "…"
-        lines.append(f"- *Доп. проверка:* {cov.title}. {short}")
     lines.append("")
     return "\n".join(lines)
 
@@ -355,7 +346,7 @@ def compose_short_report(scan: Scan, findings: list[Finding]) -> str:
     reportable = _report_findings(findings)
     parts = _report_header(scan, "Краткий отчёт по сайту")
     parts.append(_summary_money(reportable))
-    parts.append(_scope_section(ctx, findings))
+    parts.append(_scope_section(ctx))
     parts.append(
         _structured_findings_sections(
             reportable,
@@ -376,7 +367,7 @@ def compose_extended_report(scan: Scan, findings: list[Finding]) -> str:
     parts.append(_disclaimer())
     parts.append("")
     parts.append(_executive_summary(findings))
-    parts.append(_scope_section(ctx, findings))
+    parts.append(_scope_section(ctx))
     parts.append(
         _structured_findings_sections(
             reportable,

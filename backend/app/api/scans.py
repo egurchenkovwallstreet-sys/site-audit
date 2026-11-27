@@ -264,7 +264,9 @@ async def get_scan_findings(
     result = await session.execute(
         select(Finding).where(Finding.scan_id == scan.id).order_by(Finding.id)
     )
-    findings = result.scalars().all()
+    findings = [
+        f for f in result.scalars().all() if f.type != "coverage"
+    ]
     return [
         FindingResponse(
             id=f.id,
@@ -288,7 +290,7 @@ async def _scan_findings(session: AsyncSession, scan_id: int) -> list[Finding]:
     result = await session.execute(
         select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.id)
     )
-    return list(result.scalars().all())
+    return [f for f in result.scalars().all() if f.type != "coverage"]
 
 
 def _validate_outreach_recipient(scan: Scan, to_email: str) -> str:

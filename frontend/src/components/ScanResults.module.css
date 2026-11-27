@@ -883,36 +883,6 @@
   margin: 0 0 calc(0.35rem * var(--ui));
 }
 
-.coverageNote {
-  margin-bottom: calc(1rem * var(--ui));
-  padding: calc(0.85rem * var(--ui)) calc(1rem * var(--ui));
-  border-radius: calc(12px * var(--ui));
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--muted) 8%, var(--surface));
-  font-size: calc(0.88rem * var(--ui));
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.coverageTitle {
-  font-weight: 600;
-  font-size: calc(0.92rem * var(--ui));
-  margin: 0 0 calc(0.3rem * var(--ui));
-  color: var(--text);
-}
-
-.coverageLead {
-  margin: 0 0 calc(0.65rem * var(--ui));
-  font-size: calc(0.85rem * var(--ui));
-}
-
-.coverageItemTitle {
-  margin: calc(0.5rem * var(--ui)) 0 calc(0.2rem * var(--ui));
-  font-weight: 600;
-  font-size: calc(0.86rem * var(--ui));
-  color: var(--text);
-}
-
 .emailList {
   list-style: none;
   margin: 0;
