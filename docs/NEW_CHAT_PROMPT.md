@@ -10,12 +10,12 @@
 
 ### Обязательно прочитать перед работой (в этом порядке)
 
-1. **`PROGRESS.md`** — что сделано, что в плане, итерации (источник истины по статусу); актуальный прод — блок **«Снимок продакшена»** и **`docs/prod-snapshot.md`**.
-2. **`docs/compliance-legal-map.md`** — какие нормы 152-ФЗ → что ищем на сайте → штраф.
-3. **`docs/deploy-workflow.md`** — деплой на VPS (обязателен после каждой содержательной итерации).
-4. **`docs/architecture.md`**, **`docs/database.md`** — при изменении API/БД.
-5. **`docs/deployment.md`**, **`docs/server-setup.md`** — при смене инфраструктуры.
-6. **`README.md`** — структура `backend/`, `frontend/`, `scanner/`.
+1. **`PROGRESS.md`** — что сделано, что в плане; **фаза A завершена**, **фаза B** — домен, безопасность, ЮKassa.
+2. **`docs/launch-phase-b-tz.md`** — чеклисты запуска (B1–B4).
+3. **`docs/compliance-legal-map.md`** — какие нормы 152-ФЗ → что ищем на сайте → штраф.
+4. **`docs/deploy-workflow.md`** — деплой на VPS (после содержательных изменений кода).
+5. **`docs/prod-snapshot.md`** — фактическая инфраструктура.
+6. **`docs/report-policy.md`** — антибот, отчёты 490/990 ₽, гейт после ЮKassa.
 
 Не выдумывай штрафы и нормы: опирайся на `backend/app/data/penalties.py`, `legal_basis.py`, карту в `compliance-legal-map.md`.
 
@@ -29,63 +29,33 @@
 | VPS | `root@194.87.220.206`, проект на сервере: `/root/apps/site-audit` |
 | Деплой | `ssh root@194.87.220.206 "bash /root/apps/site-audit/scripts/remote-redeploy.sh"` |
 | Стек | FastAPI (Python 3.12), Next.js, PostgreSQL 16, Docker Compose |
-| Ключевые модули | `backend/app/compliance/` — checker, privacy_detection, form_consent, spa_bundle_scan; `backend/app/scan/` — page_fetch, site_scan, site_pages; `frontend/src/components/ScanResults.tsx` |
-| Регрессия | `scripts/regression_urls.json`, `scripts/regression_scan.py` |
-| Эталоны | Darom SPA, example.com, okno.ru (формы), cian.ru (антибот/sitemap) |
 
-**Приоритет продукта (согласовано с заказчиком):** сначала **качество проверки и UX**, потом GigaChat/отчёты, потом платежи.
+### Фаза A (готово)
 
-### Что уже сделано (кратко)
+- Скан до **30** страниц, Playwright, Nuclei, комплаенс/SEO/security, честный scope.
+- UI: таймер 10:00, все findings, мобильная вёрстка, HTML-отчёты с оформлением.
+- Регрессия по cron; прод стабилен.
 
-- API сканов: POST `/api/scans`, findings, **`context`** (политика, cookie, страницы, scope).
-- Мульти-страница: до **30** приоритетных URL на проде (вход, ссылки, sitemap); исключены **sitemap `*.xml.gz`** как «страницы».
-- Антибот: fallback `/contacts/`, тип **`access`** (не факт 152-ФЗ); честный UI при `pages_checked = 0`.
-- Политика ПДн: **строгий** детектор (без ложных «152-ФЗ в meta»); для ЦИАН — **`back_location`** в заглушке Servicepipe; сиды `/legal-documents/…`.
-- Формы: штраф только при полях ПДн; исключены поиск/логин; okno без ложных «7 форм».
-- Cookie/иностранные SDK: только при **реальной** аналитике в HTML/скриптах.
-- SPA: один проход JS-бандлов (`analyze_spa_bundles`).
-- UI: шаги скана, «Что проверили», факты vs прогноз (security), цвета штрафов.
-- VPS: многократные деплои; проверки okno.ru, cian.ru, self-scan.
+### Фаза B (текущая работа)
 
-Детали и галочки — только в **`PROGRESS.md`**.
+1. **B1** — домен, HTTPS, env URL, SEO (`docs/seo-setup.md`).
+2. **B2** — rate limit, SSRF, заголовки, firewall (`PROGRESS.md` шаг 11).
+3. **B3** — ЮKassa, webhook, гейт download, UI оплаты (`PROGRESS.md` шаг 8).
+4. **B4** — финальная приёмка (`PROGRESS.md` шаг 12).
 
-Ориентир по коммиту на проде: см. **`PROGRESS.md` → «Снимок продакшена»** (не дублировать здесь).
-
-### Что предстоит (фаза A, по ТЗ / PROGRESS)
-
-1. **Playwright** — читать HTML на антибот/SPA (ЦИАН, etagi, attik), не только `back_location`.
-2. **Регрессия** — полный прогон на VPS, расширить `regression_urls.json` (ЦИАН, Авито, «плохой» сайт).
-3. **Содержание политики** — ч.4 ст. 18.1 (оператор, цели, права), когда текст стабильно доступен.
-4. Техника: Referrer-Policy, доработка Set-Cookie; позже ZAP/Nuclei.
-5. **Приёмка UI** заказчиком на сервере.
-6. Юрист: верификация формулировок КоАП.
-
-**Отложено (фаза B):** GigaChat, уровни отчётов, ЮKassa, подписка, шаги 11–12 безопасность/финал.
+**Отложено:** GigaChat, подписка, масштаб (`docs/mass-scale-tz.md`), outreach (`docs/outreach-machine-tz.md`).
 
 ### Правила работы в Cursor (обязательны)
 
-1. Минимальный diff; не ломать согласованную логику штрафов без обновления `compliance-legal-map.md`.
-2. После **завершённой** итерации (код проверен, имеет смысл на проде):
-   - обновить **`PROGRESS.md`** (поставить `[x]` только если проверили на VPS или регрессией);
-   - `git add` релевантные файлы → `git commit` → `git push origin main`;
-   - **`ssh root@194.87.220.206 "bash /root/apps/site-audit/scripts/remote-redeploy.sh"`**;
-   - при необходимости — тестовый скан через API (`POST http://194.87.220.206:8080/api/scans`) и кратко зафиксировать id скана в PROGRESS или в ответе пользователю.
-3. Не трогать `.env` на сервере; не делать force push в `main`.
-4. Отдельный проект заказчика: «Система сигналов» (paper-short, фильтры 152-ФЗ) — **не менять**, если пользователь явно не просит.
-
-### Как проверять
-
-```powershell
-# Создать скан
-Invoke-RestMethod -Method POST -Uri 'http://194.87.220.206:8080/api/scans' `
-  -ContentType 'application/json' -Body '{"target_url":"https://example.com/"}'
-# GET /api/scans/{id} и /api/scans/{id}/findings
-```
+1. Минимальный diff; не ломать логику штрафов без обновления `compliance-legal-map.md`.
+2. После итерации с кодом: `PROGRESS.md` → commit → push → `remote-redeploy.sh` (см. `.cursor/rules/deploy-after-work.mdc`).
+3. Не трогать `.env` на сервере без явной задачи; не force push в `main`.
+4. Проект «Система сигналов» — не менять без явного запроса.
 
 ### Первый шаг в новом чате
 
-Ответь одной строкой: «Прочитал PROGRESS и compliance-legal-map; текущая фаза: …; следующий пункт: …» — затем выполняй задачу пользователя.
+Ответь одной строкой: «Прочитал PROGRESS и launch-phase-b-tz; фаза B: …; следующий пункт: …» — затем выполняй задачу пользователя.
 
 ---
 
-*Файл обновлять при смене фазы или инфраструктуры. Дата последнего обновления: 2026-11-22.*
+*Обновлено: 2026-11-27.*

@@ -11,6 +11,8 @@
 
 Полная инструкция: **[docs/server-setup.md](docs/server-setup.md)**.
 
+**Статус (2026-11-27):** фаза A (продукт) — готова; запуск — **[docs/launch-phase-b-tz.md](docs/launch-phase-b-tz.md)** (домен, безопасность, ЮKassa). Прогресс: **[PROGRESS.md](PROGRESS.md)**.
+
 ## Структура проекта
 
 - `backend/` — API на Python и FastAPI.
