@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ScanResults } from "@/components/ScanResults";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import styles from "../../home.module.css";
 
@@ -38,6 +39,7 @@ export function CheckPageClient({ scanToken }: { scanToken: string }) {
           Ссылку на эту страницу можно отправить коллеге — отчёт обновляется по
           мере проверки.
         </p>
+        <SiteFooter />
       </main>
     </div>
   );

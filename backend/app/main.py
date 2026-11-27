@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
 
 from app.api.scans import router as scans_router
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.config import get_settings
 from app.db.session import async_session_factory
 from app.models.entities import Scan, ScanStatus
@@ -43,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(scans_router)
 

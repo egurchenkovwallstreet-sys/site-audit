@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { HomePitch } from "./HomePitch";
 import { ScanForm } from "./ScanForm";
+import { SiteFooter } from "./SiteFooter";
 import { ThemeToggle } from "./ThemeToggle";
 import styles from "../app/home.module.css";
 
@@ -38,6 +39,7 @@ export function HomeClient() {
           Сервис выполняет только безопасные проверки. Мы не эксплуатируем
           уязвимости.
         </p>
+        <SiteFooter />
       </main>
     </div>
   );
