@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 from app.models.entities import Scan, ScanStatus
-from app.services.scan_stale import _scan_age_sec, stale_after_sec
+from app.services.scan_stale import _scan_age_sec, scan_wall_clock_max_sec, stale_after_sec
 
 
 def test_stale_after_includes_budget():
-    assert stale_after_sec() >= 600
+    assert stale_after_sec() >= scan_wall_clock_max_sec()
+    assert scan_wall_clock_max_sec() >= 1200
 
 
 def test_scan_age_for_old_running():

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
 
     # Бюджет одного скана (сек): обход + compliance + passive + Nuclei
     scan_time_budget_sec: int = 600
+    scan_time_extension_sec: int = 600
+    scan_task_timeout_buffer_sec: int = 120
+    scan_auto_retry_max: int = 2
     scan_max_pages: int = 30
 
     nuclei_enabled: bool = True
@@ -36,9 +39,9 @@ class Settings(BaseSettings):
     scan_queue_avg_sec: int = 240
     scan_queue_message_min_waiting: int = 5
 
-    scan_rate_limit_per_hour: int = 5
-    scan_rate_limit_per_day: int = 20
-    scan_rate_limit_burst_10min: int = 2
+    scan_rate_limit_per_hour: int = 8
+    scan_rate_limit_per_day: int = 40
+    scan_rate_limit_burst_10min: int = 4
     # Через запятую: без лимитов на POST /api/scans
     scan_rate_limit_bypass_ips: str = ""
 

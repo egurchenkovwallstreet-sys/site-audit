@@ -100,6 +100,31 @@ class Subscription(Base):
     )
 
 
+class AdminIncident(Base):
+    __tablename__ = "admin_incidents"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True
+    )
+    scan_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("scans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="warn")
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (Index("ix_admin_incidents_created_at", "created_at"),)
+
+
 class Scan(Base):
     __tablename__ = "scans"
 

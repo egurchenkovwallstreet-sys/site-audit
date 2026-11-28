@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.compliance.checker import check_url_compliance
@@ -16,14 +17,30 @@ from app.scan.seo_checker import check_url_seo
 from app.scan.technical_checker import check_url_technical
 
 
-async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
+async def run_compliance_scan(
+    session: AsyncSession,
+    scan: Scan,
+    *,
+    time_budget_sec: float | None = None,
+) -> Scan:
+    from app.services.scan_run_meta import (
+        effective_time_budget_sec,
+        init_run_meta_on_start,
+        read_run_meta,
+    )
+
     scan.status = ScanStatus.RUNNING.value
+    init_run_meta_on_start(scan)
+    meta = read_run_meta(scan)
+    if meta["phase"] >= 2:
+        await session.execute(delete(Finding).where(Finding.scan_id == scan.id))
     await session.commit()
 
     try:
         rows: list[dict] = []
         context: dict | None = None
-        time_budget = ScanTimeBudget.from_settings()
+        limit = time_budget_sec if time_budget_sec is not None else effective_time_budget_sec(scan)
+        time_budget = ScanTimeBudget(limit)
         bundle = await fetch_scan_site(scan.target_url, time_budget=time_budget)
         try:
             compliance_rows, context = await check_url_compliance(
@@ -57,7 +74,7 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
             pass
         if context is not None:
             settings = get_settings()
-            context["time_budget_sec"] = settings.scan_time_budget_sec
+            context["time_budget_sec"] = int(limit)
             context["scan_max_pages"] = settings.scan_max_pages
             context["nuclei_enabled"] = settings.nuclei_enabled
             scan.context_json = json.dumps(context, ensure_ascii=False)
@@ -80,9 +97,11 @@ async def run_compliance_scan(session: AsyncSession, scan: Scan) -> Scan:
         scan.status = ScanStatus.COMPLETED.value
         scan.completed_at = datetime.now(timezone.utc)
     except Exception:
-        scan.status = ScanStatus.FAILED.value
-        scan.completed_at = datetime.now(timezone.utc)
-        await session.commit()
+        await session.rollback()
+        scan = await session.get(Scan, scan.id)
+        if scan is not None and scan.status != ScanStatus.COMPLETED.value:
+            scan.status = ScanStatus.RUNNING.value
+            await session.commit()
         raise
 
     await session.commit()

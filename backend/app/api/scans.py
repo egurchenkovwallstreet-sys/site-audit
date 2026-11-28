@@ -27,12 +27,22 @@ from app.services.scan_access import new_public_token, scan_by_public_token
 from app.services.scan_rate_limit import ScanRateLimitExceeded, assert_scan_rate_allowed
 from app.services.scan_queue import enqueue_and_try_start, queue_metrics
 from app.services.scan_runner import run_compliance_scan
+from app.config import get_settings
+from app.services.scan_finish import (
+    complete_partial_if_possible,
+    handle_wall_clock_timeout,
+    requeue_auto_retry,
+)
+from app.services.scan_incidents import (
+    classify_exception,
+    create_admin_incident,
+    exception_detail,
+)
+from app.services.scan_run_meta import effective_time_budget_sec, read_run_meta, task_timeout_for_scan
 from app.services.scan_stale import (
     mark_scan_failed,
     reconcile_stale_scan,
-    requeue_scan_after_timeout,
     restart_scan,
-    scan_task_timeout_sec,
 )
 from app.services.smtp_send import (
     SmtpDeliveryError,
@@ -152,28 +162,64 @@ async def _run_scan_task(scan_id: int) -> None:
         scan = await session.get(Scan, scan_id)
         if scan is None:
             return
-        timeout = scan_task_timeout_sec()
+        timeout = task_timeout_for_scan(scan)
+        budget = effective_time_budget_sec(scan)
         try:
             await asyncio.wait_for(
-                run_compliance_scan(session, scan),
+                run_compliance_scan(session, scan, time_budget_sec=budget),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
             await session.refresh(scan)
-            if scan.status not in (
-                ScanStatus.COMPLETED.value,
-                ScanStatus.FAILED.value,
-            ):
-                await requeue_scan_after_timeout(session, scan)
-                requeued = True
-        except Exception:
+            outcome = await handle_wall_clock_timeout(session, scan)
+            requeued = outcome in ("requeue_phase2", "requeue")
+        except Exception as exc:
             await session.rollback()
             scan = await session.get(Scan, scan_id)
-            if scan is not None and scan.status == ScanStatus.RUNNING.value:
+            if scan is None or scan.status == ScanStatus.COMPLETED.value:
+                return
+            settings = get_settings()
+            meta = read_run_meta(scan)
+            side = classify_exception(exc)
+            detail = exception_detail(exc)
+            detail["classified_as"] = side
+            if side == "our" and meta["auto_retries"] < settings.scan_auto_retry_max:
+                await create_admin_incident(
+                    session,
+                    scan=scan,
+                    kind="our_error_auto_retry",
+                    severity="warn",
+                    title="Сбой на нашей стороне — автоперезапуск проверки",
+                    detail=detail,
+                )
+                await requeue_auto_retry(session, scan, reason=type(exc).__name__)
+                requeued = True
+            elif await complete_partial_if_possible(
+                session,
+                scan,
+                note="Частичный результат после сбоя; данные могут быть неполными.",
+            ):
+                await create_admin_incident(
+                    session,
+                    scan=scan,
+                    kind="error_partial_ok",
+                    severity="info",
+                    title="После ошибки выдан частичный результат",
+                    detail=detail,
+                )
+            else:
+                await create_admin_incident(
+                    session,
+                    scan=scan,
+                    kind="scan_failed",
+                    severity="critical",
+                    title="Проверка не завершилась — нужен разбор",
+                    detail=detail,
+                )
                 await mark_scan_failed(
                     session,
                     scan,
-                    reason="Внутренняя ошибка при проверке.",
+                    reason="Внутренняя ошибка при проверке. Мы уже уведомлены.",
                 )
     if requeued:
         await enqueue_and_try_start(_run_scan_task)

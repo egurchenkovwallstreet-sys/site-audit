@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -18,13 +17,22 @@ def _scan_age_sec(scan: Scan, now: datetime | None = None) -> float:
     return (now - created).total_seconds()
 
 
-def stale_after_sec() -> float:
+def scan_wall_clock_max_sec() -> float:
     settings = get_settings()
-    return float(settings.scan_time_budget_sec) + 180.0
+    return float(
+        settings.scan_time_budget_sec
+        + settings.scan_time_extension_sec
+        + settings.scan_task_timeout_buffer_sec * 2
+    )
+
+
+def stale_after_sec() -> float:
+    return scan_wall_clock_max_sec() + 180.0
 
 
 def scan_task_timeout_sec() -> float:
-    return stale_after_sec()
+    settings = get_settings()
+    return float(settings.scan_time_budget_sec + settings.scan_task_timeout_buffer_sec)
 
 
 async def mark_scan_failed(
@@ -49,8 +57,7 @@ async def requeue_scan_after_timeout(
     session: AsyncSession,
     scan: Scan,
 ) -> None:
-    """Снова в очередь вместо failed при нехватке времени."""
-    await session.execute(delete(Finding).where(Finding.scan_id == scan.id))
+    """Устаревший путь: мягкий requeue без удаления findings."""
     scan.status = ScanStatus.QUEUED.value
     scan.completed_at = None
     await session.commit()
@@ -58,13 +65,15 @@ async def requeue_scan_after_timeout(
 
 
 async def reconcile_stale_scan(session: AsyncSession, scan: Scan) -> bool:
-    """Если скан завис в pending/running — снова в очередь (не failed)."""
+    """Зависший скан: продление / диагностика / requeue."""
     if scan.status not in (ScanStatus.PENDING.value, ScanStatus.RUNNING.value):
         return False
     if _scan_age_sec(scan) < stale_after_sec():
         return False
-    await requeue_scan_after_timeout(session, scan)
-    return True
+    from app.services.scan_finish import handle_wall_clock_timeout
+
+    outcome = await handle_wall_clock_timeout(session, scan)
+    return outcome in ("requeue_phase2", "requeue", "partial_done")
 
 
 async def restart_scan(

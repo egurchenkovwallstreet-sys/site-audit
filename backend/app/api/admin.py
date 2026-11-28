@@ -12,6 +12,7 @@ from app.services.admin_auth import (
     require_admin,
     verify_login,
 )
+from app.services.admin_incidents import list_admin_incidents, resolve_admin_incident
 from app.services.admin_stats import PeriodKey, build_admin_stats
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -72,3 +73,28 @@ async def admin_stats_all(
     for key in ("day", "week", "month", "all"):
         out[key] = await build_admin_stats(session, key)  # type: ignore[arg-type]
     return out
+
+
+@router.get("/incidents")
+async def admin_incidents_list(
+    limit: int = 40,
+    unresolved_only: bool = True,
+    _email: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, list]:
+    items = await list_admin_incidents(
+        session, limit=min(max(limit, 1), 100), unresolved_only=unresolved_only
+    )
+    return {"items": items}
+
+
+@router.post("/incidents/{incident_id}/resolve")
+async def admin_incidents_resolve(
+    incident_id: int,
+    _email: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    row = await resolve_admin_incident(session, incident_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Инцидент не найден")
+    return row

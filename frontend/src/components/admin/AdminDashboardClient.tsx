@@ -6,6 +6,18 @@ import styles from "./admin.module.css";
 
 type PeriodKey = "day" | "week" | "month" | "all";
 
+type AdminIncident = {
+  id: number;
+  scan_id: number | null;
+  created_at: string | null;
+  kind: string;
+  severity: string;
+  title: string;
+  target_url: string;
+  detail: unknown;
+  resolved: boolean;
+};
+
 type StatsPayload = {
   period: string;
   summary: {
@@ -45,6 +57,16 @@ export function AdminDashboardClient() {
   const [stats, setStats] = useState<StatsPayload | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [incidents, setIncidents] = useState<AdminIncident[]>([]);
+
+  const loadIncidents = useCallback(async () => {
+    const res = await fetch("/api/admin/incidents?limit=30&unresolved_only=true", {
+      credentials: "include",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setIncidents(data.items ?? []);
+  }, []);
 
   const load = useCallback(async (p: PeriodKey) => {
     setError(null);
@@ -68,7 +90,24 @@ export function AdminDashboardClient() {
 
   useEffect(() => {
     void load(period);
-  }, [period, load]);
+    void loadIncidents();
+    const t = setInterval(() => void loadIncidents(), 30_000);
+    return () => clearInterval(t);
+  }, [period, load, loadIncidents]);
+
+  async function resolveIncident(id: number) {
+    await fetch(`/api/admin/incidents/${id}/resolve`, {
+      method: "POST",
+      credentials: "include",
+    });
+    void loadIncidents();
+  }
+
+  function severityClass(sev: string): string {
+    if (sev === "critical") return styles.sevCritical;
+    if (sev === "warn") return styles.sevWarn;
+    return styles.sevInfo;
+  }
 
   async function logout() {
     await fetch("/api/admin/logout", {
@@ -93,6 +132,40 @@ export function AdminDashboardClient() {
           </button>
         </div>
       </div>
+
+      {incidents.length > 0 ? (
+        <section className={styles.incidentPanel} aria-labelledby="incidents-h">
+          <h2 id="incidents-h" className={styles.h2}>
+            Сбои и долгие проверки ({incidents.length})
+          </h2>
+          {incidents.map((inc) => (
+            <div key={inc.id} className={styles.incidentItem}>
+              <p className={severityClass(inc.severity)}>
+                <strong>{inc.title}</strong> — {inc.target_url}
+              </p>
+              <p className={styles.muted}>
+                {inc.kind}
+                {inc.scan_id != null ? ` · scan #${inc.scan_id}` : ""}
+                {inc.created_at ? ` · ${inc.created_at}` : ""}
+              </p>
+              {inc.detail != null ? (
+                <pre className={styles.muted} style={{ fontSize: "0.75rem", whiteSpace: "pre-wrap" }}>
+                  {typeof inc.detail === "string"
+                    ? inc.detail
+                    : JSON.stringify(inc.detail, null, 2)}
+                </pre>
+              ) : null}
+              <button
+                type="button"
+                className={styles.resolveBtn}
+                onClick={() => void resolveIncident(inc.id)}
+              >
+                Отметить разобрано
+              </button>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       <div className={styles.tabs}>
         {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => (
