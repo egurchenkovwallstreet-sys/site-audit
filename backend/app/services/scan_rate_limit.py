@@ -20,6 +20,8 @@ async def assert_scan_rate_allowed(session: AsyncSession, client_ip: str) -> Non
         return
 
     settings = get_settings()
+    if client_ip in settings.scan_rate_limit_bypass_ip_set():
+        return
     now = datetime.now(timezone.utc)
 
     async def count_since(delta: timedelta) -> int:

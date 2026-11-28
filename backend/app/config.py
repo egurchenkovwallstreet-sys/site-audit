@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     scan_rate_limit_per_hour: int = 5
     scan_rate_limit_per_day: int = 20
     scan_rate_limit_burst_10min: int = 2
+    # Через запятую: без лимитов на POST /api/scans
+    scan_rate_limit_bypass_ips: str = ""
 
     admin_email: str = ""
     admin_password: str = ""
@@ -61,6 +63,13 @@ class Settings(BaseSettings):
 
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    def scan_rate_limit_bypass_ip_set(self) -> frozenset[str]:
+        return frozenset(
+            ip.strip()
+            for ip in self.scan_rate_limit_bypass_ips.split(",")
+            if ip.strip()
+        )
 
     @property
     def database_url_sync(self) -> str:
