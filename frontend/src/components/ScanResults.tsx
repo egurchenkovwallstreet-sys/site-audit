@@ -917,7 +917,7 @@ export function ScanResults({
               {extendedWait
                 ? "Нам требуется немного больше времени — проверка ещё идёт"
                 : queueHeavy && queueEtaMinutes && !accelerating
-                  ? `Сейчас высокая загрузка сервиса. Перед вами ещё ${scan?.queue_waiting_ahead ?? 0} заявок в очереди. Ориентировочное время до готовности результата — около ${queueEtaMinutes} мин.`
+                  ? `Сейчас высокая загрузка сервиса. Ориентировочное время до готовности результата — около ${queueEtaMinutes} мин.`
                   : accelerating
                     ? "Отчёт почти готов!"
                     : finishing

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import math
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,23 +44,27 @@ async def queue_waiting_ahead(session: AsyncSession, scan: Scan) -> int:
     return int(q.scalar_one())
 
 
-def estimate_wait_sec(*, waiting_ahead: int, running_count: int) -> int:
-    """Оценка до старта/готовности: ~5 проверок за 10 мин при 2 активных (внутр.)."""
-    scans_per_10_min = 5
-    bucket_sec = 600
-    position = waiting_ahead + 1 + max(0, running_count)
-    if position <= 0:
-        return bucket_sec
-    batches = math.ceil(position / scans_per_10_min)
-    return max(bucket_sec, batches * bucket_sec)
+QUEUE_BASE_SEC = 600
+QUEUE_EXTRA_PER_SITE_SEC = 180
+QUEUE_BASE_COUNT = 5
+
+
+def estimate_wait_sec(*, waiting_ahead: int) -> int:
+    """Первые 5 ожидающих — 10 мин; каждый следующий +3 мин к ориентиру."""
+    position = waiting_ahead + 1
+    if position <= QUEUE_BASE_COUNT:
+        return QUEUE_BASE_SEC
+    return QUEUE_BASE_SEC + (position - QUEUE_BASE_COUNT) * QUEUE_EXTRA_PER_SITE_SEC
 
 
 async def queue_metrics(session: AsyncSession, scan: Scan) -> tuple[int, int | None]:
     ahead = await queue_waiting_ahead(session, scan)
     if scan.status != ScanStatus.QUEUED.value:
         return 0, None
-    running = await count_scans_by_status(session, ScanStatus.RUNNING.value)
-    eta = estimate_wait_sec(waiting_ahead=ahead, running_count=running)
+    position = ahead + 1
+    if position <= QUEUE_BASE_COUNT:
+        return ahead, None
+    eta = estimate_wait_sec(waiting_ahead=ahead)
     return ahead, eta
 
 
