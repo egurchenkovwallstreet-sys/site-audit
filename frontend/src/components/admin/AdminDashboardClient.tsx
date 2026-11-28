@@ -268,11 +268,11 @@ export function AdminDashboardClient() {
   return (
     <main className={styles.wrap}>
       {queueAlert ? (
-        <motion aria-live="polite" className={styles.queueAlert}>
+        <div aria-live="polite" className={styles.queueAlert}>
           <strong>Высокая очередь:</strong> сейчас в ожидании{" "}
           <strong>{queuedNow}</strong> проверок (порог {alertThreshold}). Смотрите блок
           «Очередь» и журнал сбоев — возможно, нужны мощности.
-        </motion>
+        </div>
       ) : null}
       <header className={styles.toolbar}>
         <div>
@@ -612,21 +612,5 @@ export function AdminDashboardClient() {
         ))}
       </Section>
     </main>
-  );
-}
-
-function motion({
-  className,
-  children,
-  ...rest
-}: {
-  className?: string;
-  children: ReactNode;
-  "aria-live"?: "polite" | "assertive" | "off";
-}) {
-  return (
-    <div className={className} {...rest}>
-      {children}
-    </div>
   );
 }
