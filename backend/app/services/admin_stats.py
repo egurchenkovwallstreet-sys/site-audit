@@ -7,6 +7,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entities import Finding, Payment, PaymentStatus, Scan, ScanStatus
+from app.config import get_settings
+from app.services.queue_snapshot import (
+    list_queue_peaks,
+    queue_high_load_episode_count,
+    queue_max_waiting_in_period,
+)
 
 PeriodKey = Literal["day", "week", "month", "all"]
 
@@ -270,6 +276,14 @@ async def build_admin_stats(
         round(100.0 * completed / created, 1) if created > 0 else None
     )
 
+    settings = get_settings()
+    queue_max_waiting = await queue_max_waiting_in_period(session, since)
+    queue_threshold = settings.scan_queue_alert_min_waiting
+    queue_over_threshold_samples = await queue_high_load_episode_count(
+        session, since, threshold=queue_threshold
+    )
+    queue_peaks = await list_queue_peaks(session, since=since, limit=15)
+
     return {
         "period": period,
         "from": since.isoformat() if since else None,
@@ -298,7 +312,12 @@ async def build_admin_stats(
             "payments_short_sum_rub": short_row["amount_rub"] if short_row else 0,
             "payments_extended_count": ext_row["count"] if ext_row else 0,
             "payments_extended_sum_rub": ext_row["amount_rub"] if ext_row else 0,
+            "queue_max_waiting": queue_max_waiting,
+            "queue_alert_threshold": queue_threshold,
+            "queue_over_threshold_samples": queue_over_threshold_samples,
+            "max_concurrent_scans": settings.scan_queue_max_concurrent,
         },
+        "queue_peaks": queue_peaks,
         "by_status": by_status,
         "new_ips": new_ips_breakdown,
         "payments_by_report": payments_by_report,

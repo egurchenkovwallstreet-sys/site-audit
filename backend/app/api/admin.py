@@ -18,6 +18,11 @@ from app.services.admin_incidents import (
     resolve_admin_incident,
 )
 from app.services.admin_stats import PeriodKey, build_admin_stats
+from app.services.queue_snapshot import (
+    list_queue_snapshots,
+    period_since,
+    read_live_queue_counts,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -112,3 +117,33 @@ async def admin_incidents_resolve(
     if row is None:
         raise HTTPException(status_code=404, detail="Инцидент не найден")
     return row
+
+
+@router.get("/queue/live")
+async def admin_queue_live(
+    _email: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    return await read_live_queue_counts(session)
+
+
+@router.get("/queue/history")
+async def admin_queue_history(
+    period: PeriodKey = "day",
+    limit: int = 200,
+    high_load_only: bool = False,
+    _email: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    from app.config import get_settings
+
+    settings = get_settings()
+    since = period_since(period)
+    items = await list_queue_snapshots(
+        session,
+        since=since,
+        limit=limit,
+        high_load_only=high_load_only,
+        threshold=settings.scan_queue_alert_min_waiting,
+    )
+    return {"period": period, "items": items}

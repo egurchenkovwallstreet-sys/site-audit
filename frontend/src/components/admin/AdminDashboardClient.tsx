@@ -40,7 +40,17 @@ type StatsPayload = {
     payments_short_sum_rub: number;
     payments_extended_count: number;
     payments_extended_sum_rub: number;
+    queue_max_waiting: number;
+    queue_alert_threshold: number;
+    queue_over_threshold_samples: number;
+    max_concurrent_scans: number;
   };
+  queue_peaks: {
+    recorded_at: string | null;
+    queued_count: number;
+    running_count: number;
+    max_concurrent: number;
+  }[];
   by_status: { status: string; count: number }[];
   top_target_urls: { url: string; count: number }[];
   new_ips: { client_ip: string; scans_in_period: number }[];
@@ -137,6 +147,31 @@ export function AdminDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [incidents, setIncidents] = useState<AdminIncident[]>([]);
   const [incidentsError, setIncidentsError] = useState<string | null>(null);
+  const [queueLive, setQueueLive] = useState<{
+    queued_now: number;
+    running_now: number;
+    max_concurrent: number;
+    alert_threshold: number;
+  } | null>(null);
+  const [queueHistory, setQueueHistory] = useState<
+    { recorded_at: string | null; queued_count: number; running_count: number }[]
+  >([]);
+
+  const loadQueueLive = useCallback(async () => {
+    const res = await fetch("/api/admin/queue/live", { credentials: "include" });
+    if (res.ok) setQueueLive(await res.json());
+  }, []);
+
+  const loadQueueHistory = useCallback(async (p: PeriodKey) => {
+    const res = await fetch(
+      `/api/admin/queue/history?period=${p}&limit=80&high_load_only=false`,
+      { credentials: "include" },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setQueueHistory(data.items ?? []);
+    }
+  }, []);
 
   const loadIncidents = useCallback(async () => {
     setIncidentsError(null);
@@ -178,9 +213,15 @@ export function AdminDashboardClient() {
   useEffect(() => {
     void load(period);
     void loadIncidents();
-    const t = setInterval(() => void loadIncidents(), 30_000);
-    return () => clearInterval(t);
-  }, [period, load, loadIncidents]);
+    void loadQueueLive();
+    void loadQueueHistory(period);
+    const t1 = setInterval(() => void loadIncidents(), 30_000);
+    const t2 = setInterval(() => void loadQueueLive(), 15_000);
+    return () => {
+      clearInterval(t1);
+      clearInterval(t2);
+    };
+  }, [period, load, loadIncidents, loadQueueLive, loadQueueHistory]);
 
   async function resolveIncident(id: number) {
     await fetch(`/api/admin/incidents/${id}/resolve`, {
@@ -219,9 +260,20 @@ export function AdminDashboardClient() {
 
   const s = stats?.summary;
   const activeIncidents = incidents.filter((i) => !i.resolved);
+  const alertThreshold =
+    queueLive?.alert_threshold ?? s?.queue_alert_threshold ?? 5;
+  const queuedNow = queueLive?.queued_now ?? s?.queued_now ?? 0;
+  const queueAlert = queuedNow >= alertThreshold;
 
   return (
     <main className={styles.wrap}>
+      {queueAlert ? (
+        <motion aria-live="polite" className={styles.queueAlert}>
+          <strong>Высокая очередь:</strong> сейчас в ожидании{" "}
+          <strong>{queuedNow}</strong> проверок (порог {alertThreshold}). Смотрите блок
+          «Очередь» и журнал сбоев — возможно, нужны мощности.
+        </motion>
+      ) : null}
       <header className={styles.toolbar}>
         <div>
           <h1 className={styles.title}>Админ-кабинет</h1>
@@ -281,11 +333,83 @@ export function AdminDashboardClient() {
             </div>
           </Section>
 
-          <Section id="sec-live" title="2. Сейчас на сервере" hint="Не зависит от вкладки периода">
-            <div className={`${styles.kpiRow} ${styles.kpiRowNarrow}`}>
-              <Kpi label="В очереди" value={s?.queued_now ?? 0} />
-              <Kpi label="Выполняется" value={s?.running_now ?? 0} />
+          <Section
+            id="sec-live"
+            title="2. Очередь проверок"
+            hint="Live ~15 с. История — снимки каждые 30 с в БД. Уведомление в журнале при ≥ порога."
+          >
+            <div className={styles.kpiRow}>
+              <Kpi
+                label="Сейчас в очереди"
+                value={queueLive?.queued_now ?? s?.queued_now ?? 0}
+                sub="ожидают старт"
+              />
+              <Kpi
+                label="Сейчас выполняется"
+                value={queueLive?.running_now ?? s?.running_now ?? 0}
+                sub={`макс. параллельно ${queueLive?.max_concurrent ?? s?.max_concurrent_scans ?? 2}`}
+              />
+              <Kpi
+                label="Макс. очередь за период"
+                value={s?.queue_max_waiting ?? 0}
+                sub="пик ожидающих"
+              />
+              <Kpi
+                label={`Снимков при ≥${s?.queue_alert_threshold ?? 5} в очереди`}
+                value={s?.queue_over_threshold_samples ?? 0}
+                sub="за выбранный период"
+              />
             </div>
+            {stats.queue_peaks.length > 0 ? (
+              <>
+                <h3 className={styles.h3}>Пики очереди за период</h3>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.thLeft}>Время (UTC)</th>
+                      <th className={styles.thRight}>В очереди</th>
+                      <th className={styles.thRight}>Выполнялось</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.queue_peaks.map((row) => (
+                      <tr key={row.recorded_at ?? row.queued_count}>
+                        <td className={styles.urlCell}>{row.recorded_at ?? "—"}</td>
+                        <td className={styles.num}>{row.queued_count}</td>
+                        <td className={styles.num}>{row.running_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <p className={styles.emptyNote}>
+                Пиков за период пока нет — история накапливается после выката (~30 с на точку).
+              </p>
+            )}
+            {queueHistory.length > 0 ? (
+              <>
+                <h3 className={styles.h3}>Последние снимки (хронология)</h3>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.thLeft}>Время</th>
+                      <th className={styles.thRight}>Очередь</th>
+                      <th className={styles.thRight}>Running</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queueHistory.slice(0, 25).map((row) => (
+                      <tr key={row.recorded_at ?? `${row.queued_count}`}>
+                        <td className={styles.urlCell}>{row.recorded_at ?? "—"}</td>
+                        <td className={styles.num}>{row.queued_count}</td>
+                        <td className={styles.num}>{row.running_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : null}
           </Section>
 
           <Section
@@ -488,5 +612,21 @@ export function AdminDashboardClient() {
         ))}
       </Section>
     </main>
+  );
+}
+
+function motion({
+  className,
+  children,
+  ...rest
+}: {
+  className?: string;
+  children: ReactNode;
+  "aria-live"?: "polite" | "assertive" | "off";
+}) {
+  return (
+    <div className={className} {...rest}>
+      {children}
+    </div>
   );
 }

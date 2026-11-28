@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -41,7 +42,18 @@ async def lifespan(_app: FastAPI):
         await session.commit()
 
     await bootstrap_queue_after_startup(_run_scan_task)
-    yield
+
+    from app.services.queue_snapshot import queue_monitor_loop
+
+    monitor_task = asyncio.create_task(queue_monitor_loop())
+    try:
+        yield
+    finally:
+        monitor_task.cancel()
+        try:
+            await monitor_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(

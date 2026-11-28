@@ -23,7 +23,9 @@ openssl rand -hex 32
 - `POST /api/admin/login` — cookie `site_audit_admin`
 - `GET /api/admin/stats?period=day|week|month|all` — в т.ч. **новые IP**, **оплаты отчётов** (таблица `payments`, статус `succeeded`)
 - `GET /api/admin/stats/all-periods`
-- `GET /api/admin/incidents` — сбои проверок (обновление в UI ~30 с)
+- `GET /api/admin/queue/live` — очередь сейчас (UI ~15 с)
+- `GET /api/admin/queue/history?period=` — снимки глубины очереди
+- `GET /api/admin/incidents` — сбои и **высокая очередь** ≥5 (обновление ~30 с)
 - `POST /api/admin/incidents/{id}/resolve`
 
 ## Проверки: 10 + 10 минут

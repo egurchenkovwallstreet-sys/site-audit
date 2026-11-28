@@ -100,6 +100,20 @@ class Subscription(Base):
     )
 
 
+class QueueSnapshot(Base):
+    __tablename__ = "queue_snapshots"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    queued_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    running_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_concurrent: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (Index("ix_queue_snapshots_recorded_at", "recorded_at"),)
+
+
 class AdminIncident(Base):
     __tablename__ = "admin_incidents"
 

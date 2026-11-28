@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     scan_queue_max_concurrent: int = 2
     scan_queue_avg_sec: int = 240
     scan_queue_message_min_waiting: int = 5
+    scan_queue_alert_min_waiting: int = 5
+    scan_queue_snapshot_interval_sec: int = 30
 
     scan_rate_limit_per_hour: int = 8
     scan_rate_limit_per_day: int = 40
