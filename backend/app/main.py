@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text, update
 
+from app.api.admin import router as admin_router
 from app.api.scans import router as scans_router
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.config import get_settings
@@ -60,6 +61,7 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(scans_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

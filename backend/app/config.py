@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     scan_rate_limit_per_day: int = 20
     scan_rate_limit_burst_10min: int = 2
 
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_session_secret: str = ""
+    admin_session_ttl_sec: int = 604_800
+
     public_site_url: str = "http://localhost:3000"
 
     smtp_host: str = ""
