@@ -17,13 +17,19 @@
 .title {
   font-size: 1.5rem;
   font-weight: 600;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.headerSub {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .muted {
   color: rgba(255, 255, 255, 0.55);
   font-size: 0.9rem;
-  margin: 0 0 1.25rem;
+  margin: 0;
 }
 
 .label {
@@ -89,11 +95,42 @@
   cursor: pointer;
 }
 
+.periodBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.periodBarLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.periodHint {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45);
+  flex: 1 1 100%;
+}
+
+@media (min-width: 640px) {
+  .periodHint {
+    flex: 1 1 auto;
+    text-align: right;
+  }
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  margin: 0;
 }
 
 .tab {
@@ -110,38 +147,97 @@
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
+.sectionBlock {
   margin-bottom: 1.5rem;
-}
-
-.statCard {
-  padding: 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.statLabel {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.55);
-  margin: 0 0 0.35rem;
-}
-
-.statValue {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.panel {
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.25rem;
-  border-radius: 12px;
+  padding: 1.15rem 1.25rem 1.25rem;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.sectionAlert {
+  border-color: rgba(255, 120, 80, 0.4);
+  background: rgba(80, 30, 20, 0.2);
+}
+
+.sectionHead {
+  margin-bottom: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sectionHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.4;
+}
+
+.h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.kpiRowNarrow {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  max-width: 320px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.kpiLabel {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.52);
+  line-height: 1.25;
+}
+
+.kpiValue {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.kpiSub {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.paymentTotal {
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.emptyNote {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 1.5rem;
 }
 
 .h2 {
@@ -156,9 +252,31 @@
   font-size: 0.9rem;
 }
 
+.table th {
+  padding: 0.35rem 0;
+  font-weight: 500;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .table td {
   padding: 0.35rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.thLeft {
+  text-align: left;
+}
+
+.thRight {
+  text-align: right;
+}
+
+.detailPre {
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  margin: 0.35rem 0 0;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .num {
@@ -175,14 +293,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-}
-
-.incidentPanel {
-  margin-bottom: 1.25rem;
-  border: 1px solid rgba(255, 120, 80, 0.35);
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  background: rgba(80, 30, 20, 0.25);
 }
 
 .incidentItem {
@@ -218,7 +328,8 @@
 }
 
 @media (max-width: 720px) {
-  .split {
+  .split,
+  .detailsGrid {
     grid-template-columns: 1fr;
   }
 }
