@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.db.session import async_session_factory
 from app.services.scan_queue import decrement_slot, fill_scan_slots, set_slots_in_use
 
 logger = logging.getLogger(__name__)
@@ -25,16 +24,6 @@ def launch_scan_worker(scan_id: int, run_fn) -> None:
 
 
 async def bootstrap_queue_after_startup(run_scan_task) -> None:
-    from sqlalchemy import func, select
-
-    from app.models.entities import Scan, ScanStatus
-
-    async with async_session_factory() as session:
-        q = await session.execute(
-            select(func.count())
-            .select_from(Scan)
-            .where(Scan.status == ScanStatus.RUNNING.value)
-        )
-        set_slots_in_use(int(q.scalar_one()))
-
+    """Слотов в памяти нет — running уже сброшены в queued до вызова."""
+    set_slots_in_use(0)
     await fill_scan_slots(run_scan_task)

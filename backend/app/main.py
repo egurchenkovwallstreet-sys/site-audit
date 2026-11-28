@@ -9,6 +9,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.config import get_settings
 from app.db.session import async_session_factory
 from app.models.entities import Scan, ScanStatus
+from app.services.scan_recovery import requeue_interrupted_running_scans
 from app.services.scan_stale import reconcile_stale_scan
 
 settings = get_settings()
@@ -35,6 +36,7 @@ async def lifespan(_app: FastAPI):
             .where(Scan.status == ScanStatus.PENDING.value)
             .values(status=ScanStatus.QUEUED.value)
         )
+        await requeue_interrupted_running_scans(session)
         await session.commit()
 
     await bootstrap_queue_after_startup(_run_scan_task)
