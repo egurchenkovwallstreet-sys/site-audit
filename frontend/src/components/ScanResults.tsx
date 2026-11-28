@@ -76,10 +76,35 @@ function isQueueHeavy(scan: Scan | null): boolean {
 const STATUS_TEXT: Record<string, string> = {
   pending: "Готовим проверку…",
   queued: "Готовим проверку…",
-  running: "Сканируем безопасность и 152-ФЗ…",
+  running: "Выполняем проверку сайта…",
   completed: "Готово",
   failed: "Не удалось завершить проверку",
 };
+
+function resolveStatusText(
+  scan: Scan | null,
+  accelerating: boolean,
+  scanInFlight: boolean,
+  displayMs: number,
+): string {
+  if (accelerating && scan?.status === "completed") {
+    return "Проверка завершена — собираем отчёт…";
+  }
+  if (!scan) {
+    return "Загрузка…";
+  }
+  const underTenMin =
+    scanInFlight && displayMs > 0 && displayMs < SCAN_COUNTDOWN_MS;
+  if (
+    underTenMin &&
+    (scan.status === "running" ||
+      scan.status === "queued" ||
+      scan.status === "pending")
+  ) {
+    return "Выполняем проверку сайта…";
+  }
+  return STATUS_TEXT[scan.status] ?? scan.status;
+}
 
 const STEPS = [
   "Загружаем страницу",
@@ -618,7 +643,7 @@ export function ScanResults({
         }
         return;
       }
-      if (data.status === "failed") return;
+      if (data.status === "failed" && !data.stale) return;
       const delay = extendedWait ? POLL_MS_EXTEND : POLL_MS;
       setTimeout(poll, delay);
     }
@@ -739,11 +764,19 @@ export function ScanResults({
   }, [zero, accelerating]);
 
   useEffect(() => {
-    if (scan?.status === "failed" && !countdownSettled) {
+    if (scan?.status === "failed" && scan.stale && !restarting) {
+      setCountdownSettled(false);
+      setExtendedWait(true);
+      setExtraMs(EXTEND_WAIT_MS);
+      setAccelerating(false);
+      void restartScanOnServer();
+      return;
+    }
+    if (scan?.status === "failed" && !scan.stale && !countdownSettled) {
       setCountdownSettled(true);
       setExtendedWait(false);
     }
-  }, [scan?.status, countdownSettled]);
+  }, [scan?.status, scan?.stale, countdownSettled, restarting]);
 
   useEffect(() => {
     if (zero && scanInFlight && !scanTerminal) {
@@ -917,11 +950,12 @@ export function ScanResults({
       </div>
       <p className={styles.url}>{displayUrl}</p>
       <p className={styles.status}>
-        {accelerating && scan?.status === "completed"
-          ? "Проверка завершена — собираем отчёт…"
-          : scan
-            ? (STATUS_TEXT[scan.status] ?? scan.status)
-            : "Загрузка…"}
+        {resolveStatusText(
+          scan,
+          accelerating,
+          scanInFlight,
+          extendedWait ? extraMs : remainingMs,
+        )}
       </p>
       {loaderVisible ? (
         <>
@@ -991,7 +1025,7 @@ export function ScanResults({
           </div>
         </>
       ) : null}
-      {revealOutcome && scan?.status === "failed" ? (
+      {revealOutcome && scan?.status === "failed" && !scan.stale ? (
         <div className={styles.failedBanner} role="alert">
           <p className={styles.failedTitle}>Не удалось завершить проверку</p>
           <p className={styles.itemMeta}>

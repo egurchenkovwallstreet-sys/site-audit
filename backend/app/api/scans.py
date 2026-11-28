@@ -30,6 +30,7 @@ from app.services.scan_runner import run_compliance_scan
 from app.services.scan_stale import (
     mark_scan_failed,
     reconcile_stale_scan,
+    requeue_scan_after_timeout,
     restart_scan,
     scan_task_timeout_sec,
 )
@@ -146,6 +147,7 @@ def _sanctions_response(penalty_code: str | None) -> PenaltySanctionsResponse | 
 
 
 async def _run_scan_task(scan_id: int) -> None:
+    requeued = False
     async with async_session_factory() as session:
         scan = await session.get(Scan, scan_id)
         if scan is None:
@@ -162,11 +164,8 @@ async def _run_scan_task(scan_id: int) -> None:
                 ScanStatus.COMPLETED.value,
                 ScanStatus.FAILED.value,
             ):
-                await mark_scan_failed(
-                    session,
-                    scan,
-                    reason="Проверка прервана по лимиту времени на сервере.",
-                )
+                await requeue_scan_after_timeout(session, scan)
+                requeued = True
         except Exception:
             await session.rollback()
             scan = await session.get(Scan, scan_id)
@@ -176,6 +175,8 @@ async def _run_scan_task(scan_id: int) -> None:
                     scan,
                     reason="Внутренняя ошибка при проверке.",
                 )
+    if requeued:
+        await enqueue_and_try_start(_run_scan_task)
 
 
 @router.post("", response_model=ScanResponse)
@@ -246,7 +247,8 @@ async def get_scan_by_token(
     token: str, session: AsyncSession = Depends(get_db)
 ) -> ScanResponse:
     scan = await scan_by_public_token(session, token)
-    await reconcile_stale_scan(session, scan)
+    if await reconcile_stale_scan(session, scan):
+        await enqueue_and_try_start(_run_scan_task)
     await session.refresh(scan)
     return await build_scan_response(session, scan)
 

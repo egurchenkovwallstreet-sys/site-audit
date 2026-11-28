@@ -45,18 +45,25 @@ async def mark_scan_failed(
     await session.commit()
 
 
+async def requeue_scan_after_timeout(
+    session: AsyncSession,
+    scan: Scan,
+) -> None:
+    """Снова в очередь вместо failed при нехватке времени."""
+    await session.execute(delete(Finding).where(Finding.scan_id == scan.id))
+    scan.status = ScanStatus.QUEUED.value
+    scan.completed_at = None
+    await session.commit()
+    await session.refresh(scan)
+
+
 async def reconcile_stale_scan(session: AsyncSession, scan: Scan) -> bool:
-    """Если скан завис в pending/running — пометить failed. Возврат: был ли сброшен."""
+    """Если скан завис в pending/running — снова в очередь (не failed)."""
     if scan.status not in (ScanStatus.PENDING.value, ScanStatus.RUNNING.value):
         return False
     if _scan_age_sec(scan) < stale_after_sec():
         return False
-    await mark_scan_failed(
-        session,
-        scan,
-        reason="Превышено время ожидания (сервер не завершил проверку). "
-        "Запустите проверку снова.",
-    )
+    await requeue_scan_after_timeout(session, scan)
     return True
 
 
