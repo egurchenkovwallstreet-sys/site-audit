@@ -6,7 +6,7 @@ from typing import Any, Literal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entities import Finding, Scan, ScanStatus
+from app.models.entities import Finding, Payment, PaymentStatus, Scan, ScanStatus
 
 PeriodKey = Literal["day", "week", "month", "all"]
 
@@ -91,6 +91,117 @@ async def build_admin_stats(
     )
     unique_ips = int(ips_q.scalar_one())
 
+    prior_ips_subq: select | None = None
+    if since is not None:
+        prior_ips_subq = (
+            select(Scan.client_ip)
+            .where(Scan.client_ip.isnot(None), Scan.created_at < since)
+            .distinct()
+            .scalar_subquery()
+        )
+
+    if prior_ips_subq is not None:
+        new_ips_q = await session.execute(
+            select(func.count(func.distinct(Scan.client_ip))).where(
+                *scan_filter,
+                Scan.client_ip.isnot(None),
+                Scan.client_ip.not_in(prior_ips_subq),
+            )
+        )
+        scans_new_ip_q = await session.execute(
+            select(func.count())
+            .select_from(Scan)
+            .where(
+                *scan_filter,
+                Scan.client_ip.isnot(None),
+                Scan.client_ip.not_in(prior_ips_subq),
+            )
+        )
+        new_unique_ips = int(new_ips_q.scalar_one())
+        scans_from_new_ips = int(scans_new_ip_q.scalar_one())
+
+        top_new_ips_rows = await session.execute(
+            select(Scan.client_ip, func.count())
+            .where(
+                *scan_filter,
+                Scan.client_ip.isnot(None),
+                Scan.client_ip.not_in(prior_ips_subq),
+            )
+            .group_by(Scan.client_ip)
+            .order_by(func.count().desc())
+            .limit(15)
+        )
+        new_ips_breakdown = [
+            {"client_ip": row[0], "scans_in_period": int(row[1])}
+            for row in top_new_ips_rows.fetchall()
+        ]
+    else:
+        new_unique_ips = unique_ips
+        scans_new_ip_q = await session.execute(
+            select(func.count())
+            .select_from(Scan)
+            .where(*scan_filter, Scan.client_ip.isnot(None))
+        )
+        scans_from_new_ips = int(scans_new_ip_q.scalar_one())
+        top_all_ips = await session.execute(
+            select(Scan.client_ip, func.count())
+            .where(Scan.client_ip.isnot(None))
+            .group_by(Scan.client_ip)
+            .order_by(func.count().desc())
+            .limit(15)
+        )
+        new_ips_breakdown = [
+            {"client_ip": row[0], "scans_in_period": int(row[1])}
+            for row in top_all_ips.fetchall()
+        ]
+
+    payment_time_filter = [Payment.created_at >= since] if since is not None else []
+
+    async def payment_agg(*extra) -> tuple[int, int]:
+        q = await session.execute(
+            select(func.count(), func.coalesce(func.sum(Payment.amount), 0))
+            .select_from(Payment)
+            .where(
+                *payment_time_filter,
+                *extra,
+            )
+        )
+        row = q.one()
+        return int(row[0]), int(row[1])
+
+    pay_ok_n, pay_ok_sum = await payment_agg(
+        Payment.status == PaymentStatus.SUCCEEDED.value
+    )
+    pay_pending_n, pay_pending_sum = await payment_agg(
+        Payment.status == PaymentStatus.PENDING.value
+    )
+    pay_all_n, pay_all_sum = await payment_agg()
+
+    pay_by_tier = await session.execute(
+        select(Payment.tier, func.count(), func.coalesce(func.sum(Payment.amount), 0))
+        .where(
+            *payment_time_filter,
+            Payment.status == PaymentStatus.SUCCEEDED.value,
+        )
+        .group_by(Payment.tier)
+        .order_by(Payment.tier)
+    )
+    payments_by_tier = [
+        {"tier": row[0], "count": int(row[1]), "amount_rub": int(row[2])}
+        for row in pay_by_tier.fetchall()
+    ]
+
+    pay_by_status = await session.execute(
+        select(Payment.status, func.count(), func.coalesce(func.sum(Payment.amount), 0))
+        .where(*payment_time_filter)
+        .group_by(Payment.status)
+        .order_by(Payment.status)
+    )
+    payments_by_status = [
+        {"status": row[0], "count": int(row[1]), "amount_rub": int(row[2])}
+        for row in pay_by_status.fetchall()
+    ]
+
     top_targets = await session.execute(
         select(Scan.target_url, func.count())
         .where(*scan_filter)
@@ -152,10 +263,21 @@ async def build_admin_stats(
             "running_now": running_now,
             "success_rate_pct": success_rate,
             "unique_ips": unique_ips,
+            "new_unique_ips": new_unique_ips,
+            "scans_from_new_ips": scans_from_new_ips,
             "avg_completion_sec": avg_completion_sec,
             "findings_total": findings_total,
+            "payments_succeeded_count": pay_ok_n,
+            "payments_succeeded_sum_rub": pay_ok_sum,
+            "payments_pending_count": pay_pending_n,
+            "payments_pending_sum_rub": pay_pending_sum,
+            "payments_all_count": pay_all_n,
+            "payments_all_sum_rub": pay_all_sum,
         },
         "by_status": by_status,
+        "new_ips": new_ips_breakdown,
+        "payments_by_tier": payments_by_tier,
+        "payments_by_status": payments_by_status,
         "top_target_urls": top_urls,
         "findings_by_type": findings_by_type,
         "findings_by_severity": findings_by_severity,

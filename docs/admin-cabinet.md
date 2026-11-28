@@ -21,7 +21,7 @@ openssl rand -hex 32
 ## API
 
 - `POST /api/admin/login` — cookie `site_audit_admin`
-- `GET /api/admin/stats?period=day|week|month|all`
+- `GET /api/admin/stats?period=day|week|month|all` — в т.ч. **новые IP**, **оплаты отчётов** (таблица `payments`, статус `succeeded`)
 - `GET /api/admin/stats/all-periods`
 - `GET /api/admin/incidents` — сбои проверок (обновление в UI ~30 с)
 - `POST /api/admin/incidents/{id}/resolve`
