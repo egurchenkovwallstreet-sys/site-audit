@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 
 from app.api.scans import router as scans_router
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -16,6 +16,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    from app.api.scans import _run_scan_task
+    from app.services.scan_dispatch import bootstrap_queue_after_startup
+
     async with async_session_factory() as session:
         result = await session.execute(
             select(Scan).where(
@@ -27,6 +30,14 @@ async def lifespan(_app: FastAPI):
         for scan in result.scalars():
             await reconcile_stale_scan(session, scan)
             await session.refresh(scan)
+        await session.execute(
+            update(Scan)
+            .where(Scan.status == ScanStatus.PENDING.value)
+            .values(status=ScanStatus.QUEUED.value)
+        )
+        await session.commit()
+
+    await bootstrap_queue_after_startup(_run_scan_task)
     yield
 
 

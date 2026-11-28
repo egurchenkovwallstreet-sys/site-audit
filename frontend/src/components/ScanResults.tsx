@@ -40,6 +40,8 @@ type Scan = {
   status: string;
   context?: ScanContext | null;
   stale?: boolean;
+  queue_waiting_ahead?: number;
+  estimated_wait_sec?: number | null;
 };
 
 type Finding = {
@@ -62,8 +64,18 @@ const SEO_PRIORITY_LABEL: Record<string, string> = {
   low: "Низкий приоритет",
 };
 
+const QUEUE_MESSAGE_MIN_WAITING = 5;
+
+function isQueueHeavy(scan: Scan | null): boolean {
+  if (!scan || scan.status !== "queued") {
+    return false;
+  }
+  return (scan.queue_waiting_ahead ?? 0) >= QUEUE_MESSAGE_MIN_WAITING;
+}
+
 const STATUS_TEXT: Record<string, string> = {
   pending: "Готовим проверку…",
+  queued: "Готовим проверку…",
   running: "Сканируем безопасность и 152-ФЗ…",
   completed: "Готово",
   failed: "Не удалось завершить проверку",
@@ -113,6 +125,7 @@ function useScanCountdown(
   scanToken: string,
   active: boolean,
   accelerating: boolean,
+  initialMs?: number,
 ) {
   const deadlineRef = useRef<number | null>(null);
   const remainingRef = useRef(scanCountdownMs());
@@ -122,14 +135,14 @@ function useScanCountdown(
   const [zero, setZero] = useState(false);
 
   useEffect(() => {
-    const est = scanCountdownMs();
+    const est = initialMs ?? scanCountdownMs();
     deadlineRef.current = Date.now() + est;
     remainingRef.current = est;
     accelStartedAtRef.current = null;
     setRemainingMs(est);
     setFinishing(false);
     setZero(false);
-  }, [scanToken]);
+  }, [scanToken, initialMs]);
 
   useEffect(() => {
     if (accelerating) {
@@ -572,6 +585,8 @@ export function ScanResults({
   const [progressStep, setProgressStep] = useState(0);
   const [accelerating, setAccelerating] = useState(false);
   const [countdownSettled, setCountdownSettled] = useState(false);
+  const [timerEpoch, setTimerEpoch] = useState(0);
+  const prevStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -584,7 +599,7 @@ export function ScanResults({
       if (!active) return;
       setScan(data);
       tick += 1;
-      if (data.status === "pending") {
+      if (data.status === "pending" || data.status === "queued") {
         setProgressStep(0);
       } else if (data.status === "running") {
         setProgressStep(Math.min(2, 1 + Math.floor(tick / 2)));
@@ -618,6 +633,23 @@ export function ScanResults({
     setRestarting(false);
   }, [scanToken]);
 
+  useEffect(() => {
+    const status = scan?.status ?? null;
+    if (prevStatusRef.current === "queued" && status === "running") {
+      setExtendedWait(false);
+      setExtraMs(EXTEND_WAIT_MS);
+      setTimerEpoch((e) => e + 1);
+    }
+    prevStatusRef.current = status;
+  }, [scan?.status]);
+
+  const queueHeavy = isQueueHeavy(scan);
+  const queueCountdownMs =
+    queueHeavy && scan?.estimated_wait_sec
+      ? scan.estimated_wait_sec * 1000
+      : undefined;
+  const countdownKey = `${scanToken}:${timerEpoch}`;
+
   async function restartScanOnServer() {
     if (restarting) return;
     setRestarting(true);
@@ -641,7 +673,10 @@ export function ScanResults({
   }
 
   const scanInFlight =
-    !scan || scan.status === "pending" || scan.status === "running";
+    !scan ||
+    scan.status === "pending" ||
+    scan.status === "queued" ||
+    scan.status === "running";
   const scanTerminal =
     scan?.status === "completed" || scan?.status === "failed";
 
@@ -654,9 +689,10 @@ export function ScanResults({
       scan?.status === "completed");
 
   const { remainingMs, finishing, zero } = useScanCountdown(
-    scanToken,
+    countdownKey,
     countdownActive,
     accelerating,
+    queueHeavy ? queueCountdownMs : undefined,
   );
 
   /** Ранняя готовность API — сразу включаем ускорение циферблата (до paint). */
@@ -688,9 +724,20 @@ export function ScanResults({
   useEffect(() => {
     if (zero && scanInFlight && !scanTerminal) {
       setExtendedWait(true);
-      setExtraMs(EXTEND_WAIT_MS);
+      if (scan?.status === "queued" && scan.estimated_wait_sec) {
+        setExtraMs(
+          Math.max(EXTEND_WAIT_MS, scan.estimated_wait_sec * 1000),
+        );
+      } else {
+        setExtraMs(EXTEND_WAIT_MS);
+      }
     }
-  }, [zero, scanInFlight, scanTerminal]);
+  }, [zero, scanInFlight, scanTerminal, scan?.status, scan?.estimated_wait_sec]);
+
+  const queueEtaMinutes =
+    queueHeavy && scan?.estimated_wait_sec
+      ? Math.max(1, Math.ceil(scan.estimated_wait_sec / 60))
+      : null;
 
   useEffect(() => {
     if (!extendedWait || scanTerminal) return;
@@ -868,12 +915,14 @@ export function ScanResults({
           >
             <p className={styles.countdownLabel}>
               {extendedWait
-                ? "Нам требуется немного больше времени — сервер ещё обрабатывает сайт"
-                : accelerating
-                  ? "Отчёт почти готов!"
-                  : finishing
-                    ? "Проверка может занять до 10 минут — ждём сервер…"
-                    : "Ориентир по времени — 10 минут"}
+                ? "Нам требуется немного больше времени — проверка ещё идёт"
+                : queueHeavy && queueEtaMinutes && !accelerating
+                  ? `Сейчас высокая загрузка сервиса. Перед вами ещё ${scan?.queue_waiting_ahead ?? 0} заявок в очереди. Ориентировочное время до готовности результата — около ${queueEtaMinutes} мин.`
+                  : accelerating
+                    ? "Отчёт почти готов!"
+                    : finishing
+                      ? "Проверка может занять до 10 минут — ждём сервер…"
+                      : "Ориентир по времени — 10 минут"}
             </p>
             <p className={styles.countdownValue}>
               <span className={styles.countdownNumber}>

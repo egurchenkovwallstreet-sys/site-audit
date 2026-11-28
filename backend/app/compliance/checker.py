@@ -69,12 +69,9 @@ class RawFinding:
 
 
 def validate_target_url(url: str) -> str:
-    parsed = urlparse(url.strip())
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError("Разрешены только URL с http или https")
-    if not parsed.netloc:
-        raise ValueError("Некорректный URL")
-    return url.strip()
+    from app.compliance.url_validation import validate_target_url as _validate
+
+    return _validate(url)
 
 
 def _merge_candidates(primary: list[str], extra: list[str]) -> list[str]:

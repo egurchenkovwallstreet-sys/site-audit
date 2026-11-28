@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     nuclei_timeout_sec: int = 180
     passive_probe_max: int = 12
 
+    scan_queue_max_concurrent: int = 2
+    scan_queue_avg_sec: int = 240
+    scan_queue_message_min_waiting: int = 5
+
+    scan_rate_limit_per_hour: int = 5
+    scan_rate_limit_per_day: int = 20
+    scan_rate_limit_burst_10min: int = 2
+
     public_site_url: str = "http://localhost:3000"
 
     smtp_host: str = ""

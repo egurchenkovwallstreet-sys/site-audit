@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 from email.message import EmailMessage
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -22,7 +22,10 @@ from app.services.outreach_message import (
 )
 from app.reports.compose import compose_extended_report, compose_short_report
 from app.reports.html_render import render_paid_report_html
+from app.services.client_ip import client_ip_from_request
 from app.services.scan_access import new_public_token, scan_by_public_token
+from app.services.scan_rate_limit import ScanRateLimitExceeded, assert_scan_rate_allowed
+from app.services.scan_queue import enqueue_and_try_start, queue_metrics
 from app.services.scan_runner import run_compliance_scan
 from app.services.scan_stale import (
     mark_scan_failed,
@@ -70,6 +73,8 @@ class ScanResponse(BaseModel):
     context: ScanContext | None = None
     created_at: datetime | None = None
     stale: bool = False
+    queue_waiting_ahead: int = 0
+    estimated_wait_sec: int | None = None
 
 
 class SendPreviewEmailRequest(BaseModel):
@@ -176,7 +181,7 @@ async def _run_scan_task(scan_id: int) -> None:
 @router.post("", response_model=ScanResponse)
 async def create_scan(
     body: ScanCreateRequest,
-    background_tasks: BackgroundTasks,
+    request: Request,
     session: AsyncSession = Depends(get_db),
 ) -> ScanResponse:
     try:
@@ -184,21 +189,28 @@ async def create_scan(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    client_ip = client_ip_from_request(request)
+    try:
+        await assert_scan_rate_allowed(session, client_ip)
+    except ScanRateLimitExceeded as exc:
+        raise HTTPException(status_code=429, detail=exc.detail) from exc
+
     scan = Scan(
         target_url=target,
-        status=ScanStatus.PENDING.value,
+        status=ScanStatus.QUEUED.value,
         public_token=new_public_token(),
+        client_ip=client_ip,
     )
     session.add(scan)
     await session.commit()
     await session.refresh(scan)
 
-    background_tasks.add_task(_run_scan_task, scan.id)
+    await enqueue_and_try_start(_run_scan_task)
 
-    return _scan_response(scan)
+    return await build_scan_response(session, scan)
 
 
-def _scan_response(scan: Scan) -> ScanResponse:
+async def build_scan_response(session: AsyncSession, scan: Scan) -> ScanResponse:
     ctx: ScanContext | None = None
     if scan.context_json:
         try:
@@ -214,6 +226,8 @@ def _scan_response(scan: Scan) -> ScanResponse:
         except (json.JSONDecodeError, TypeError, ValueError):
             stale = False
 
+    ahead, eta = await queue_metrics(session, scan)
+
     return ScanResponse(
         id=scan.id,
         public_token=scan.public_token,
@@ -222,6 +236,8 @@ def _scan_response(scan: Scan) -> ScanResponse:
         context=ctx,
         created_at=scan.created_at,
         stale=stale,
+        queue_waiting_ahead=ahead,
+        estimated_wait_sec=eta,
     )
 
 
@@ -232,13 +248,12 @@ async def get_scan_by_token(
     scan = await scan_by_public_token(session, token)
     await reconcile_stale_scan(session, scan)
     await session.refresh(scan)
-    return _scan_response(scan)
+    return await build_scan_response(session, scan)
 
 
 @router.post("/t/{token}/restart", response_model=ScanResponse)
 async def restart_stale_scan(
     token: str,
-    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
 ) -> ScanResponse:
     scan = await scan_by_public_token(session, token)
@@ -251,8 +266,8 @@ async def restart_stale_scan(
         scan = await restart_scan(session, scan)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    background_tasks.add_task(_run_scan_task, scan.id)
-    return _scan_response(scan)
+    await enqueue_and_try_start(_run_scan_task)
+    return await build_scan_response(session, scan)
 
 
 @router.get("/t/{token}/findings", response_model=list[FindingResponse])

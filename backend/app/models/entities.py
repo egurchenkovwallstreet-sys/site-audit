@@ -21,6 +21,7 @@ from app.db.base import Base
 
 class ScanStatus(str, enum.Enum):
     PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -124,6 +125,7 @@ class Scan(Base):
     public_token: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True
     )
+    client_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
 
     user: Mapped[User | None] = relationship(back_populates="scans")
     findings: Mapped[list[Finding]] = relationship(

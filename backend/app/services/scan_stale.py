@@ -67,7 +67,7 @@ async def restart_scan(
     if scan.status == ScanStatus.COMPLETED.value:
         raise ValueError("completed")
     await session.execute(delete(Finding).where(Finding.scan_id == scan.id))
-    scan.status = ScanStatus.PENDING.value
+    scan.status = ScanStatus.QUEUED.value
     scan.context_json = None
     scan.completed_at = None
     await session.commit()

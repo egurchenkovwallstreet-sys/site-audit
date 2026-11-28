@@ -54,7 +54,8 @@
 
 - [x] Доступ к результатам только по **секретному токену** в URL (`public_token`, API `/api/scans/t/{token}`); перебор `/check/310` не работает.
 - [x] Заголовки HSTS/CSP и др. на домене; `server_tokens off`; скрыт `X-Powered-By` (сайт сервиса).
-- [ ] Rate limit `POST /api/scans`, SSRF/валидация URL.
+- [x] Очередь сканов: max **2** параллельно, статус `queued`, ETA при **≥5** ожидающих (`scan_queue`, UI).
+- [x] Rate limit `POST /api/scans` (burst/час/сутки по IP), SSRF/валидация URL (`url_validation.py`).
 - [ ] Ограничить доступ к Mailpit :8081 / Swagger в проде.
 - [ ] Firewall, бэкапы Postgres, ротация секретов.
 
