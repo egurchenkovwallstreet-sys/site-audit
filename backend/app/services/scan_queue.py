@@ -78,6 +78,7 @@ async def _oldest_queued(session: AsyncSession) -> Scan | None:
 async def fill_scan_slots(run_fn) -> list[int]:
     from app.services.scan_dispatch import launch_scan_worker
 
+    global _slots_in_use
     settings = get_settings()
     max_slots = settings.scan_queue_max_concurrent
     started: list[int] = []
