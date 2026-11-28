@@ -587,6 +587,11 @@ export function ScanResults({
   const [countdownSettled, setCountdownSettled] = useState(false);
   const [timerEpoch, setTimerEpoch] = useState(0);
   const prevStatusRef = useRef<string | null>(null);
+  /** Зафиксированный ориентир ожидания в очереди (не уменьшаем при poll). */
+  const [lockedQueueWaitMs, setLockedQueueWaitMs] = useState<number | null>(
+    null,
+  );
+  const [queueLoadMessage, setQueueLoadMessage] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -631,23 +636,42 @@ export function ScanResults({
     setExtraMs(EXTEND_WAIT_MS);
     setRestartCount(0);
     setRestarting(false);
+    setLockedQueueWaitMs(null);
+    setQueueLoadMessage(false);
   }, [scanToken]);
+
+  useEffect(() => {
+    if (scan?.status !== "queued") {
+      return;
+    }
+    if (!isQueueHeavy(scan) || !scan.estimated_wait_sec) {
+      return;
+    }
+    const ms = scan.estimated_wait_sec * 1000;
+    setLockedQueueWaitMs((prev) => prev ?? ms);
+    setQueueLoadMessage(true);
+  }, [
+    scan?.status,
+    scan?.queue_waiting_ahead,
+    scan?.estimated_wait_sec,
+  ]);
 
   useEffect(() => {
     const status = scan?.status ?? null;
     if (prevStatusRef.current === "queued" && status === "running") {
       setExtendedWait(false);
       setExtraMs(EXTEND_WAIT_MS);
+      setLockedQueueWaitMs(null);
+      setQueueLoadMessage(false);
       setTimerEpoch((e) => e + 1);
     }
     prevStatusRef.current = status;
   }, [scan?.status]);
 
-  const queueHeavy = isQueueHeavy(scan);
+  const queueHeavy =
+    scan?.status === "queued" && queueLoadMessage && lockedQueueWaitMs !== null;
   const queueCountdownMs =
-    queueHeavy && scan?.estimated_wait_sec
-      ? scan.estimated_wait_sec * 1000
-      : undefined;
+    scan?.status === "queued" ? lockedQueueWaitMs ?? undefined : undefined;
   const countdownKey = `${scanToken}:${timerEpoch}`;
 
   async function restartScanOnServer() {
@@ -692,7 +716,7 @@ export function ScanResults({
     countdownKey,
     countdownActive,
     accelerating,
-    queueHeavy ? queueCountdownMs : undefined,
+    queueCountdownMs,
   );
 
   /** Ранняя готовность API — сразу включаем ускорение циферблата (до paint). */
@@ -724,19 +748,17 @@ export function ScanResults({
   useEffect(() => {
     if (zero && scanInFlight && !scanTerminal) {
       setExtendedWait(true);
-      if (scan?.status === "queued" && scan.estimated_wait_sec) {
-        setExtraMs(
-          Math.max(EXTEND_WAIT_MS, scan.estimated_wait_sec * 1000),
-        );
+      if (scan?.status === "queued" && lockedQueueWaitMs) {
+        setExtraMs(Math.max(EXTEND_WAIT_MS, lockedQueueWaitMs));
       } else {
         setExtraMs(EXTEND_WAIT_MS);
       }
     }
-  }, [zero, scanInFlight, scanTerminal, scan?.status, scan?.estimated_wait_sec]);
+  }, [zero, scanInFlight, scanTerminal, scan?.status, lockedQueueWaitMs]);
 
   const queueEtaMinutes =
-    queueHeavy && scan?.estimated_wait_sec
-      ? Math.max(1, Math.ceil(scan.estimated_wait_sec / 60))
+    queueHeavy && lockedQueueWaitMs
+      ? Math.max(1, Math.ceil(lockedQueueWaitMs / 60_000))
       : null;
 
   useEffect(() => {
