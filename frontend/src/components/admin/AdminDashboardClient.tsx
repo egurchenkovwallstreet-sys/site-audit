@@ -38,10 +38,21 @@ type StatsPayload = {
     payments_pending_sum_rub: number;
     payments_all_count: number;
     payments_all_sum_rub: number;
+    payments_short_count: number;
+    payments_short_sum_rub: number;
+    payments_extended_count: number;
+    payments_extended_sum_rub: number;
   };
   by_status: { status: string; count: number }[];
   top_target_urls: { url: string; count: number }[];
   new_ips: { client_ip: string; scans_in_period: number }[];
+  payments_by_report: {
+    tier: string;
+    label: string;
+    list_price_rub: number;
+    count: number;
+    amount_rub: number;
+  }[];
   payments_by_tier: { tier: string; count: number; amount_rub: number }[];
   payments_by_status: { status: string; count: number; amount_rub: number }[];
   findings_by_type: { type: string; count: number }[];
@@ -285,12 +296,20 @@ export function AdminDashboardClient() {
               value={s?.scans_from_new_ips ?? 0}
             />
             <StatCard
-              label="Оплат отчётов (успешно)"
-              value={s?.payments_succeeded_count ?? 0}
+              label="Краткий отчёт: оплат"
+              value={s?.payments_short_count ?? 0}
             />
             <StatCard
-              label="Сумма оплат (успешно)"
-              value={fmtRub(s?.payments_succeeded_sum_rub ?? 0)}
+              label="Краткий: сумма"
+              value={fmtRub(s?.payments_short_sum_rub ?? 0)}
+            />
+            <StatCard
+              label="Расширенный: оплат"
+              value={s?.payments_extended_count ?? 0}
+            />
+            <StatCard
+              label="Расширенный: сумма"
+              value={fmtRub(s?.payments_extended_sum_rub ?? 0)}
             />
             <StatCard
               label="Среднее время"
@@ -322,35 +341,46 @@ export function AdminDashboardClient() {
               )}
             </div>
             <div className={styles.panel}>
-              <h2 className={styles.h2}>Оплаты отчётов</h2>
+              <h2 className={styles.h2}>Оплаты по отчётам (успешные)</h2>
               <p className={styles.muted}>
-                Успешно: {s?.payments_succeeded_count ?? 0} на{" "}
+                Всего: {s?.payments_succeeded_count ?? 0} на{" "}
                 {fmtRub(s?.payments_succeeded_sum_rub ?? 0)}
                 {(s?.payments_pending_count ?? 0) > 0
                   ? ` · в ожидании: ${s?.payments_pending_count} (${fmtRub(s?.payments_pending_sum_rub ?? 0)})`
                   : ""}
               </p>
-              {stats.payments_by_tier.length > 0 ? (
-                <>
-                  <p className={styles.muted}>По тарифу (успешные):</p>
-                  <table className={styles.table}>
-                    <tbody>
-                      {stats.payments_by_tier.map((row) => (
-                        <tr key={row.tier}>
-                          <td>{row.tier}</td>
-                          <td className={styles.num}>
-                            {row.count} · {fmtRub(row.amount_rub)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              ) : (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col" className={styles.muted} style={{ textAlign: "left" }}>
+                      Отчёт
+                    </th>
+                    <th scope="col" className={styles.muted} style={{ textAlign: "right" }}>
+                      Оплат
+                    </th>
+                    <th scope="col" className={styles.muted} style={{ textAlign: "right" }}>
+                      Сумма
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(stats.payments_by_report ?? []).map((row) => (
+                    <tr key={row.tier}>
+                      <td>
+                        {row.label}{" "}
+                        <span className={styles.muted}>({fmtRub(row.list_price_rub)})</span>
+                      </td>
+                      <td className={styles.num}>{row.count}</td>
+                      <td className={styles.num}>{fmtRub(row.amount_rub)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {(s?.payments_succeeded_count ?? 0) === 0 ? (
                 <p className={styles.muted}>
-                  Успешных оплат за период нет (ЮKassa подключится в фазе B).
+                  Пока 0 — после ЮKassa здесь появятся фактические оплаты.
                 </p>
-              )}
+              ) : null}
               {stats.payments_by_status.length > 0 ? (
                 <table className={styles.table}>
                   <tbody>

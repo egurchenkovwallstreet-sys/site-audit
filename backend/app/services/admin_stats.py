@@ -10,6 +10,12 @@ from app.models.entities import Finding, Payment, PaymentStatus, Scan, ScanStatu
 
 PeriodKey = Literal["day", "week", "month", "all"]
 
+# tier в payments совпадает с variant отчёта (short / extended)
+REPORT_PRODUCTS: tuple[tuple[str, str, int], ...] = (
+    ("short", "Краткий отчёт", 490),
+    ("extended", "Расширенный отчёт", 990),
+)
+
 
 def period_bounds(period: PeriodKey) -> tuple[datetime | None, datetime]:
     now = datetime.now(timezone.utc)
@@ -190,6 +196,21 @@ async def build_admin_stats(
         {"tier": row[0], "count": int(row[1]), "amount_rub": int(row[2])}
         for row in pay_by_tier.fetchall()
     ]
+    tier_index = {row["tier"]: row for row in payments_by_tier}
+    payments_by_report: list[dict[str, Any]] = []
+    for tier, label, list_price_rub in REPORT_PRODUCTS:
+        row = tier_index.get(tier, {"count": 0, "amount_rub": 0})
+        payments_by_report.append(
+            {
+                "tier": tier,
+                "label": label,
+                "list_price_rub": list_price_rub,
+                "count": int(row.get("count", 0)),
+                "amount_rub": int(row.get("amount_rub", 0)),
+            }
+        )
+    short_row = next((r for r in payments_by_report if r["tier"] == "short"), None)
+    ext_row = next((r for r in payments_by_report if r["tier"] == "extended"), None)
 
     pay_by_status = await session.execute(
         select(Payment.status, func.count(), func.coalesce(func.sum(Payment.amount), 0))
@@ -273,9 +294,14 @@ async def build_admin_stats(
             "payments_pending_sum_rub": pay_pending_sum,
             "payments_all_count": pay_all_n,
             "payments_all_sum_rub": pay_all_sum,
+            "payments_short_count": short_row["count"] if short_row else 0,
+            "payments_short_sum_rub": short_row["amount_rub"] if short_row else 0,
+            "payments_extended_count": ext_row["count"] if ext_row else 0,
+            "payments_extended_sum_rub": ext_row["amount_rub"] if ext_row else 0,
         },
         "by_status": by_status,
         "new_ips": new_ips_breakdown,
+        "payments_by_report": payments_by_report,
         "payments_by_tier": payments_by_tier,
         "payments_by_status": payments_by_status,
         "top_target_urls": top_urls,
