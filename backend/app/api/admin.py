@@ -12,7 +12,11 @@ from app.services.admin_auth import (
     require_admin,
     verify_login,
 )
-from app.services.admin_incidents import list_admin_incidents, resolve_admin_incident
+from app.services.admin_incidents import (
+    backfill_failed_scans,
+    list_admin_incidents,
+    resolve_admin_incident,
+)
 from app.services.admin_stats import PeriodKey, build_admin_stats
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -86,6 +90,16 @@ async def admin_incidents_list(
         session, limit=min(max(limit, 1), 100), unresolved_only=unresolved_only
     )
     return {"items": items}
+
+
+@router.post("/incidents/backfill-failed")
+async def admin_incidents_backfill(
+    limit: int = 30,
+    _email: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    n = await backfill_failed_scans(session, limit=min(max(limit, 1), 100))
+    return {"created": n}
 
 
 @router.post("/incidents/{incident_id}/resolve")

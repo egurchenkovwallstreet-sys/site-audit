@@ -58,12 +58,21 @@ export function AdminDashboardClient() {
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [incidents, setIncidents] = useState<AdminIncident[]>([]);
+  const [incidentsError, setIncidentsError] = useState<string | null>(null);
 
   const loadIncidents = useCallback(async () => {
-    const res = await fetch("/api/admin/incidents?limit=30&unresolved_only=true", {
+    setIncidentsError(null);
+    const res = await fetch("/api/admin/incidents?limit=30&unresolved_only=false", {
       credentials: "include",
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      setIncidentsError(
+        res.status === 401
+          ? "Сессия истекла — обновите страницу или войдите снова."
+          : `Не удалось загрузить инциденты (${res.status}).`,
+      );
+      return;
+    }
     const data = await res.json();
     setIncidents(data.items ?? []);
   }, []);
@@ -103,6 +112,19 @@ export function AdminDashboardClient() {
     void loadIncidents();
   }
 
+  async function backfillFailed() {
+    setIncidentsError(null);
+    const res = await fetch("/api/admin/incidents/backfill-failed?limit=40", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      setIncidentsError(`Импорт не удался (${res.status}).`);
+      return;
+    }
+    void loadIncidents();
+  }
+
   function severityClass(sev: string): string {
     if (sev === "critical") return styles.sevCritical;
     if (sev === "warn") return styles.sevWarn;
@@ -133,28 +155,56 @@ export function AdminDashboardClient() {
         </div>
       </div>
 
-      {incidents.length > 0 ? (
-        <section className={styles.incidentPanel} aria-labelledby="incidents-h">
-          <h2 id="incidents-h" className={styles.h2}>
-            Сбои и долгие проверки ({incidents.length})
-          </h2>
-          {incidents.map((inc) => (
-            <div key={inc.id} className={styles.incidentItem}>
-              <p className={severityClass(inc.severity)}>
-                <strong>{inc.title}</strong> — {inc.target_url}
-              </p>
-              <p className={styles.muted}>
-                {inc.kind}
-                {inc.scan_id != null ? ` · scan #${inc.scan_id}` : ""}
-                {inc.created_at ? ` · ${inc.created_at}` : ""}
-              </p>
-              {inc.detail != null ? (
-                <pre className={styles.muted} style={{ fontSize: "0.75rem", whiteSpace: "pre-wrap" }}>
-                  {typeof inc.detail === "string"
-                    ? inc.detail
-                    : JSON.stringify(inc.detail, null, 2)}
-                </pre>
-              ) : null}
+      <section className={styles.incidentPanel} aria-labelledby="incidents-h">
+        <h2 id="incidents-h" className={styles.h2}>
+          Сбои и долгие проверки
+          {incidents.filter((i) => !i.resolved).length > 0
+            ? ` (${incidents.filter((i) => !i.resolved).length} активных)`
+            : ""}
+        </h2>
+        <p className={styles.muted}>
+          Журнал пополняется при таймаутах 20 мин, автоповторах и сбоях после выката. Старые
+          проверки до этого момента сюда не переносятся автоматически.
+        </p>
+        {incidentsError ? (
+          <p className={styles.error} role="alert">
+            {incidentsError}
+          </p>
+        ) : null}
+        {incidents.length === 0 && !incidentsError ? (
+          <>
+            <p className={styles.muted}>Активных и недавних инцидентов пока нет.</p>
+            <button
+              type="button"
+              className={styles.resolveBtn}
+              onClick={() => void backfillFailed()}
+            >
+              Подтянуть старые failed из базы
+            </button>
+          </>
+        ) : null}
+        {incidents.map((inc) => (
+          <div key={inc.id} className={styles.incidentItem}>
+            <p className={severityClass(inc.severity)}>
+              <strong>{inc.title}</strong> — {inc.target_url}
+              {inc.resolved ? " · разобрано" : ""}
+            </p>
+            <p className={styles.muted}>
+              {inc.kind}
+              {inc.scan_id != null ? ` · scan #${inc.scan_id}` : ""}
+              {inc.created_at ? ` · ${inc.created_at}` : ""}
+            </p>
+            {inc.detail != null ? (
+              <pre
+                className={styles.muted}
+                style={{ fontSize: "0.75rem", whiteSpace: "pre-wrap" }}
+              >
+                {typeof inc.detail === "string"
+                  ? inc.detail
+                  : JSON.stringify(inc.detail, null, 2)}
+              </pre>
+            ) : null}
+            {!inc.resolved ? (
               <button
                 type="button"
                 className={styles.resolveBtn}
@@ -162,10 +212,10 @@ export function AdminDashboardClient() {
               >
                 Отметить разобрано
               </button>
-            </div>
-          ))}
-        </section>
-      ) : null}
+            ) : null}
+          </div>
+        ))}
+      </section>
 
       <div className={styles.tabs}>
         {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => (
